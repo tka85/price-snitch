@@ -1,0 +1,49 @@
+{
+  "name": "price-tracker",
+  "version": "1.0.0",
+  "description": "Headless selenium crawls product pages, keeps track of prices and notifies upon detecting significant changes",
+  "main": "app.js",
+  "scripts": {
+    "test": "mocha --timeout 1600000 --exit ./test/**/*.spec.ts",
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tka85/price-tracker.git"
+  },
+  "keywords": [
+    "Amazon",
+    "e-shop",
+    "price",
+    "tracking",
+    "notifier"
+  ],
+  "author": "tka85",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tka85/price-tracker/issues"
+  },
+  "homepage": "https://github.com/tka85/price-tracker#readme",
+  "dependencies": {
+    "@tsconfig/node18": "1.0.1",
+    "@types/selenium-webdriver": "4.1.9",
+    "chromedriver": "108.0.0",
+    "knex": "2.3.0",
+    "selenium-webdriver": "4.7.1",
+    "sqlite3": "5.1.2",
+    "typescript": "4.6.4"
+  },
+  "devDependencies": {
+    "@types/chai": "4.3.4",
+    "@types/mocha": "10.0.0",
+    "@types/sinon": "10.0.13",
+    "@typescript-eslint/eslint-plugin": "5.18.0",
+    "@typescript-eslint/parser": "5.18.0",
+    "chai": "4.3.7",
+    "eslint": "8.7.0",
+    "eslint-plugin-import": "2.25.4",
+    "mocha": "10.1.0",
+    "sinon": "14.0.2",
+    "ts-node": "10.9.1"
+  }
+}
