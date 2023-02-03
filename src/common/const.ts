@@ -1,3 +1,4 @@
 export const TABLES = {
-    priceTracker: 'price',
+    products: 'products',
+    prices: 'prices',
 };

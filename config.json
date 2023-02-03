@@ -2,31 +2,29 @@
     "webdriver": {
         "disableExtensions": true,
         "incognito": true,
-        "headless": true,
+        "headless": false,
         "proxyServerUrl": null
     },
     "db": "priceTracker.db",
-    "crawlerDefaults": {
-        "locateElementTimeout": 15000,
+    "defaults": {
+        "priceLocateTimeout": 15000,
         "cron": "0 */12 * * *",
         "priceCurrency": "€",
         "priceThousandSeparator": ".",
-        "priceDecimalPoint": ",",
-        "priceRemoveCharactersRegex": "/\\s/g"
+        "priceDecimalSeparator": ",",
+        "priceRemoveCharsRegex": "/\\s/g",
+        "notifyPriceIncreaseRatio": 0.2,
+        "notifyPriceDecreaseRatio": 0.1
     },
-    "notificationDefaults": {
-        "changeIncreaseThreshold": "20%",
-        "changeDecreaseThreshold": "10%"
-    },
-    "pages": [
+    "products": [
         {
             "url": "https://www.amazon.fr/gp/product/B09MMCJCNJ/",
             "description": "Steelcase Leap Chaise de Bureau et de Jeu Ergonomique",
+            "priceElementLocator": "//span[@class='a-price-whole']",
             "cron": "0 * * * *",
-            "priceXpath": "//span[@class='a-price-whole']",
             "priceThousandSeparator": " ",
-            "priceDecimalPoint": ",",
-            "changeDecreaseThreshold": "20%"
+            "priceDecimalSeparator": ",",
+            "notifyPriceDecreaseRatio": "0.2"
         }
     ]
 }

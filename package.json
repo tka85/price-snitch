@@ -28,6 +28,7 @@
     "@tsconfig/node18": "1.0.1",
     "@types/selenium-webdriver": "4.1.9",
     "chromedriver": "108.0.0",
+    "debug": "4.3.4",
     "knex": "2.3.0",
     "selenium-webdriver": "4.7.1",
     "sqlite3": "5.1.2",
