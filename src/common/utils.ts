@@ -1,3 +1,5 @@
+import Debug from 'debug';
+import { name, version } from '../../package.json';
 import { WebDriver } from "selenium-webdriver";
 
 export async function sleep(ms: number): Promise<void> {
@@ -22,4 +24,12 @@ export function clearAllStorage(driver: WebDriver): void {
             d.shift();
         }
     }`);
+}
+
+export function getLogger(module: string): Function {
+    return Debug(`${name}:${version}:${module}`);
+}
+
+export function getErrorLogger(module: string): Function {
+    return Debug(`${name}:${version}:${module}:ERROR`);
 }

@@ -1,9 +1,11 @@
 import { Datastore } from './Datastore';
+import { Validator } from './Validator';
 import config from '../config.json';
 
 class ObjectFactorySingleton {
     private static instance: ObjectFactorySingleton;
     private datastore: Datastore | undefined;
+    private validator: Validator | undefined;
 
     // Getter for OF singleton itself
     static get Instance(): ObjectFactorySingleton {
@@ -20,6 +22,13 @@ class ObjectFactorySingleton {
             });
         }
         return this.datastore;
+    }
+
+    getValidator(): Validator {
+        if (!this.validator) {
+            this.validator = new Validator();
+        }
+        return this.validator;
     }
 }
 

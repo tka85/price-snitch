@@ -1,5 +1,3 @@
-import { Datastore } from "../Datastore";
-
 export type WithoutId<T> = Omit<T, 'id'>;
 
 export type CrawlerWebdriverParams = {
@@ -10,7 +8,6 @@ export type CrawlerWebdriverParams = {
 };
 
 export type CrawlerParams = {
-    datastore: Datastore;
     webdriverParams?: CrawlerWebdriverParams;
 };
 
@@ -24,7 +21,7 @@ export type Product = {
     priceCurrency: string;
     priceThousandSeparator: string;
     priceDecimalSeparator: string;
-    priceRemoveCharsRegex: string;
+    priceRemoveChars: RegExp | string;
     notifyPriceIncreaseRatio: number;
     notifyPriceDecreaseRatio: number;
     created?: string;
@@ -40,7 +37,7 @@ export type DbProduct = {
     price_currency: string;
     price_thousand_separator: string;
     price_decimal_separator: string;
-    price_remove_chars_regex: string;
+    price_remove_chars_regex: RegExp | string;
     notify_price_increase_ratio: number;
     notify_price_decrease_ratio: number;
     created?: string;
@@ -48,14 +45,14 @@ export type DbProduct = {
 
 export type Price = {
     id?: number;
-    amount: number;
+    amount: string;
     prodId: number;
     created?: string;
 };
 
 export type DbPrice = {
     id?: number;
-    amount: number;
+    amount: string;
     prod_id: number;
     created?: string;
 };

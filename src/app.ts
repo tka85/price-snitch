@@ -1,27 +1,59 @@
-import Debug from 'debug';
-import { name } from '../package.json';
 import config from '../config.json';
 import { ObjectFactory } from './ObjectFactory';
 import { Product } from './common/types';
 import { Crawler } from './Crawler';
+import { Scheduler } from './Scheduler';
+import { getLogger, getErrorLogger, sleep } from './common/utils';
 
-const debug = Debug(`${name}:app`);
-const error = Debug(`${name}:app:error`);
+const log = getLogger('app');
+const logError = getErrorLogger('app');
 
-const datastore = ObjectFactory.getDatastore();
-for (let p of config.products) {
-    const product: Product = Object.assign({}, config.defaults, p);
-
-    // TODO: UPSERT product
-
-
-    debug(`Scanning product "${product.descr || product.url}"`);
+(async () => {
+    const datastore = ObjectFactory.getDatastore();
+    const validator = ObjectFactory.getValidator();
     const crawler = new Crawler({
-        datastore,
         webdriverParams: config.webdriver
     });
+    const scheduler = new Scheduler();
 
-    crawler.scanProduct(product)
-        .then((res) => debug(res))
-        .catch(err => error(err));
-}
+    for (let p of config.products) {
+        const product: Product = Object.assign({}, config.defaults, p);
+        try {
+            validator.validateProduct(product);
+        } catch (err) {
+            continue;
+        }
+
+        try {
+            // Insert product if not in db; get the assigned id
+            product.id = await datastore.insertProduct(product);
+        } catch (err) {
+            continue;
+        }
+
+        await scheduler.loadCron(product.id);
+    }
+
+    while (true) {
+        const matureProdIds = scheduler.getMatureProdIds();
+        if (matureProdIds.length) {
+            log('Mature', matureProdIds);
+            for (const pid of matureProdIds) {
+                const product = await datastore.getProductById(pid);
+                log(`Scanning price for "${product.descr || product.url}"`);
+                const price = await crawler.scanProduct(product);
+                if (price) {
+                    await datastore.insertPrice(price);
+                    log('Inserted price', price);
+                }
+            }
+        }
+        log('sleep 1000');
+        await sleep(1000);
+    }
+
+    crawler.shutdown().then(() => { process.exit(0); });
+})()
+    .catch(err => {
+        logError(err); process.exit(1);
+    });

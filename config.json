@@ -2,7 +2,7 @@
     "webdriver": {
         "disableExtensions": true,
         "incognito": true,
-        "headless": false,
+        "headless": true,
         "proxyServerUrl": null
     },
     "db": "priceTracker.db",
@@ -12,7 +12,7 @@
         "priceCurrency": "€",
         "priceThousandSeparator": ".",
         "priceDecimalSeparator": ",",
-        "priceRemoveCharsRegex": "/\\s/g",
+        "priceRemoveChars": "\\s",
         "notifyPriceIncreaseRatio": 0.2,
         "notifyPriceDecreaseRatio": 0.1
     },
@@ -21,7 +21,7 @@
             "url": "https://www.amazon.fr/gp/product/B09MMCJCNJ/",
             "description": "Steelcase Leap Chaise de Bureau et de Jeu Ergonomique",
             "priceElementLocator": "//span[@class='a-price-whole']",
-            "cron": "0 * * * *",
+            "cron": "* * * * *",
             "priceThousandSeparator": " ",
             "priceDecimalSeparator": ",",
             "notifyPriceDecreaseRatio": "0.2"

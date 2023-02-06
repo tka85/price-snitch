@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS `products`(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    url VARCHAR(2000) NOT NULL,
+    url VARCHAR(2000) UNIQUE NOT NULL,
     descr VARCHAR(1000),
     cron VARCHAR(50) NOT NULL,
     price_element_locator VARCHAR(20) NOT NULL,
@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS `products`(
     price_remove_chars_regex VARCHAR(50) NOT NULL,
     notify_price_increase_ratio VARCHAR(5) NOT NULL,
     notify_price_decrease_ratio VARCHAR(5) NOT NULL,
-    created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (id, url)
 );
 
 CREATE TABLE IF NOT EXISTS `prices`(

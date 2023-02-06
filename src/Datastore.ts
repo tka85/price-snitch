@@ -28,11 +28,13 @@ export class Datastore {
     }
 
     async getProductByUrl(url: string): Promise<Product> {
-        return await this.db(TABLES.products).select().where({ url }).first();
+        const result = await this.db(TABLES.products).select().where({ url }).first();
+        return DataConverter.toProduct(result);
     }
 
     async getProductById(id: number): Promise<Product> {
-        return await this.db(TABLES.products).select().where({ id }).first();
+        const result = await this.db(TABLES.products).select().where({ id }).first();
+        return DataConverter.toProduct(result);
     }
 
     async getPricesByProductId(productId: number, mostRecentLimit?: number): Promise<Price[]> {
