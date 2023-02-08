@@ -69,13 +69,20 @@ export class Datastore {
     }
 
     // This operation always inserts a new price record (differentiaded by `created` timestamp)
-    async insertPrice(
-        price: Price,
-    ): Promise<void> {
+    async insertPrice(price: Price): Promise<void> {
         await this.db(TABLES.prices)
             .insert(DataConverter.toDbPrice(price));
         const prod = await this.getProductById(price.prodId);
         debug(`Added new price for product "${prod.descr ?? prod.url}":`, price);
         return Promise.resolve();
+    }
+
+    async insertInvalidPrice(prodId: number) {
+        const invalidPrice = {
+            amount: '-1',
+            prodId,
+        };
+        await this.db(TABLES.prices)
+            .insert(DataConverter.toDbPrice(invalidPrice));
     }
 }

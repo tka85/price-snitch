@@ -58,6 +58,7 @@ export class Crawler {
     async shutdown(): Promise<void> {
         log('Shutting down Chrome webdriver and exiting.');
         await this.driver!.quit();
+        this.driver = null;
     }
 
     async scanProduct(product: Product): Promise<Price | undefined> {
@@ -84,6 +85,7 @@ export class Crawler {
             };
         } catch (err) {
             logError(`Could not locate element with "${product.priceElementLocator}" (time out ${product.priceLocateTimeout}ms) for product ${product.descr || product.url}`);
+            await this.shutdown();
             return;
         }
     }

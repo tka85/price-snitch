@@ -4,7 +4,8 @@ import { Datastore } from './Datastore';
 import { IteratorResultOrCronDate } from 'cron-parser/types/common';
 import { getLogger, getErrorLogger } from './common/utils';
 
-const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000; // 24h in ms
+// const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000; // 24h in ms
+const ONE_HOUR_IN_MS = 60 * 60 * 1000; // 1h in ms
 const log = getLogger('Scheduler');
 const logError = getErrorLogger('Scheduler');
 
@@ -14,7 +15,7 @@ export class Scheduler {
     private datastore: Datastore;
     private parserOptions = {
         startDate: new Date(),
-        endDate: new Date(new Date().getTime() + ONE_DAY_IN_MS),
+        endDate: new Date(new Date().getTime() + ONE_HOUR_IN_MS),
         iterator: true
     };
 

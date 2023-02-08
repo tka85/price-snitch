@@ -36,23 +36,26 @@ const logError = getErrorLogger('app');
 
     while (true) {
         const matureProdIds = scheduler.getMatureProdIds();
-        if (matureProdIds.length) {
-            log('Mature', matureProdIds);
-            for (const pid of matureProdIds) {
-                const product = await datastore.getProductById(pid);
-                log(`Scanning price for "${product.descr || product.url}"`);
+        for (const pid of matureProdIds) {
+            const product = await datastore.getProductById(pid);
+            log(`Scanning price for prod ${pid} ["${product.descr || product.url}]`);
+            try {
                 const price = await crawler.scanProduct(product);
                 if (price) {
                     await datastore.insertPrice(price);
                     log('Inserted price', price);
+                } else {
+                    await datastore.insertInvalidPrice(pid);
                 }
+            } catch (err) {
+                logError(err);
             }
         }
-        log('sleep 1000');
-        await sleep(1000);
+        log('sleeping...');
+        await sleep(60000);
     }
 
-    crawler.shutdown().then(() => { process.exit(0); });
+    // crawler.shutdown().then(() => { process.exit(0); });
 })()
     .catch(err => {
         logError(err); process.exit(1);
