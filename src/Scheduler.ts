@@ -1,23 +1,18 @@
 import parser from 'cron-parser';
 import { ObjectFactory } from './ObjectFactory';
 import { Datastore } from './Datastore';
-import { IteratorResultOrCronDate } from 'cron-parser/types/common';
 import { getLogger, getErrorLogger } from './common/utils';
 
-// const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000; // 24h in ms
-const ONE_HOUR_IN_MS = 60 * 60 * 1000; // 1h in ms
+const CRONMAP_DATES_COUNT_UPPER_LIMIT = 10;
+const CRONMAP_DATES_COUNT_LOWER_LIMIT = CRONMAP_DATES_COUNT_UPPER_LIMIT / 2;
+
 const log = getLogger('Scheduler');
 const logError = getErrorLogger('Scheduler');
 
 export class Scheduler {
-    // key == prod id, value == list of cron dates within next 24h from now
+    // key == prod id, value == list of cron dates within next N hours from now
     private cronMap: Map<number, Date[]>;
     private datastore: Datastore;
-    private parserOptions = {
-        startDate: new Date(),
-        endDate: new Date(new Date().getTime() + ONE_HOUR_IN_MS),
-        iterator: true
-    };
 
     constructor() {
         // collect all product cron specifications; map<url,cron>
@@ -25,22 +20,31 @@ export class Scheduler {
         this.datastore = ObjectFactory.getDatastore();
     }
 
-    async loadCron(prodId: number): Promise<void> {
-        log(`Adding crons for prod ${prodId}`);
+    async loadRuntimes(prodId: number): Promise<void> {
         const prod = await this.datastore.getProductById(prodId);
-        const cronDates: Date[] = [];
+        const cronDates: Date[] = this.cronMap.get(prodId) || [];
+        const parserOptions = {
+            currentDate: cronDates.length ? new Date(cronDates[cronDates.length - 1]) : new Date(),
+        };
         try {
-            let interval = parser.parseExpression(prod.cron, this.parserOptions);
-            let obj = <IteratorResultOrCronDate<true>>interval.next();
-            while (!obj.done) {
-                cronDates.push(obj.value.toDate());
-                obj = <IteratorResultOrCronDate<true>>interval.next();
+            let interval = parser.parseExpression(prod.cron, parserOptions);
+            while (cronDates.length < CRONMAP_DATES_COUNT_UPPER_LIMIT) {
+                cronDates.push(new Date(interval.next().toISOString()));
             }
-            log(`Finished loading ${cronDates.length} cron entries for prod ${prod.id!} ("${prod.descr ?? prod.url}")`, cronDates);
+            log(`Finished filling ${cronDates.length} runtimes for prod ${prod.id!} ("${prod.descr ?? prod.url}")`, cronDates);
         } catch (err) {
             logError(err);
         }
         this.cronMap.set(prod.id!, cronDates);
+    }
+
+    async checkCronmapRefills(): Promise<void> {
+        for (const [prodId, cronDates] of this.cronMap) {
+            if (cronDates.length <= CRONMAP_DATES_COUNT_LOWER_LIMIT) {
+                log(`Prod ${prodId} running low with ${cronDates.length} remaining future runtimes; refilling...`, cronDates);
+                await this.loadRuntimes(prodId);
+            }
+        }
     }
 
     printAllCrons(): void {
@@ -56,6 +60,7 @@ export class Scheduler {
                 cronDates.shift();
             }
         }
+        log('Mature prod ids', matureProdIds);
         return Array.from(matureProdIds);
     }
 }

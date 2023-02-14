@@ -1,11 +1,11 @@
-import Debug from 'debug';
-import { name } from '../package.json';
+import { getLogger } from './common/utils';
 import knex, { Knex } from 'knex';
 import { TABLES } from './common/const';
 import { DataConverter } from './DataConverter';
-import { Price, Product } from './common/types';
+import { DbPriceChange, Price, Product } from './common/types';
 
-const debug = Debug(`${name}:Datastore`);
+const log = getLogger('Datastore');
+// const logError = getErrorLogger('Datastore');
 
 export class Datastore {
     private db: Knex;
@@ -58,12 +58,12 @@ export class Datastore {
         let assignedId;
         if (await this.existsProduct(product.url)) {
             const dbProduct = await this.getProductByUrl(product.url);
-            debug(`Product "${dbProduct.descr ?? dbProduct.url}" already in db with id: ${dbProduct.id}`);
+            log(`Product "${dbProduct.descr ?? dbProduct.url}" already in db with id: ${dbProduct.id}`);
             assignedId = dbProduct.id;
         } else {
             [assignedId] = await this.db(TABLES.products)
                 .insert(DataConverter.toDbProduct(product));
-            debug(`Inserted new product "${product.descr ?? product.url}" and assigned id: ${assignedId}`);
+            log(`Inserted new product "${product.descr ?? product.url}" and assigned id: ${assignedId}`);
         }
         return Promise.resolve(assignedId);
     }
@@ -73,7 +73,7 @@ export class Datastore {
         await this.db(TABLES.prices)
             .insert(DataConverter.toDbPrice(price));
         const prod = await this.getProductById(price.prodId);
-        debug(`Added new price for product "${prod.descr ?? prod.url}":`, price);
+        log(`Added new price for product "${prod.descr ?? prod.url}":`, price);
         return Promise.resolve();
     }
 
@@ -81,8 +81,29 @@ export class Datastore {
         const invalidPrice = {
             amount: '-1',
             prodId,
+            created: new Date().toISOString(),
         };
+        log(`Inserting invalid price for product ${prodId}`);
         await this.db(TABLES.prices)
             .insert(DataConverter.toDbPrice(invalidPrice));
+    }
+
+    async evalProductPriceChange(prodId: number): Promise<DbPriceChange> {
+        return await this.db.raw(`
+        select prod_id, prev_amount, amount, amount - prev_amount as amount_diff, (amount - prev_amount) * 1.0 / prev_amount as percent_diff, created
+        from (
+                -- get price diff of last 2 readings
+                select ${TABLES.prices}.*,
+                        lag(amount) over (partition by prod_id order by created) as prev_amount
+                from (
+                    -- get most recent 2 readings per product
+                    select id, amount, prod_id, created
+                    from (select ${TABLES.prices}.*, row_number() over (partition by prod_id order by created desc) as rn
+                        from ${TABLES.prices}
+                        where prod_id = ${prodId} 
+                            and amount <> -1) as ${TABLES.prices}
+                    where rn in (1,2)) ${TABLES.prices}
+            ) as ${TABLES.prices}
+        where prev_amount is not null`);
     }
 }

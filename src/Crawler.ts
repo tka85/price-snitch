@@ -14,6 +14,7 @@ const logError = getErrorLogger('Crawler');
 export class Crawler {
     private chromedriverOptions: Options = new Options();
     private driver: WebDriver | null;
+    private loadCount: number = 0;
     private seleniumGet: Function = async () => this;
 
     constructor({
@@ -46,6 +47,7 @@ export class Crawler {
         const builder = await new Builder();
         builder.setChromeOptions(this.chromedriverOptions);
         this.driver = await builder.forBrowser(Browser.CHROME).build();
+        this.loadCount = 0;
         log('Initializing Chromedriver...');
         // override Webdriver.get()
         this.seleniumGet = this.driver.get.bind(this.driver);
@@ -56,37 +58,42 @@ export class Crawler {
     }
 
     async shutdown(): Promise<void> {
-        log('Shutting down Chrome webdriver and exiting.');
-        await this.driver!.quit();
-        this.driver = null;
+        if (this.driver) {
+            log('Shutting down Chrome webdriver and exiting.');
+            await this.driver.quit();
+            this.driver = null;
+        }
     }
 
     async scanProduct(product: Product): Promise<Price | undefined> {
         if (!this.driver) {
             await this.init();
         }
-        log(`Fetching ${product.url}...`);
-        await this.driver!.get(product.url);
-
-        try {
-            await this.driver!.wait(until.elementLocated(By.xpath(product.priceElementLocator)), product.priceLocateTimeout);
-            const priceElem = await this.driver!.findElement(By.xpath(product.priceElementLocator));
+        while (this.loadCount < product.priceLocateRetries) {
+            this.loadCount++;
+            log(`Attempt #${this.loadCount}/${product.priceLocateRetries} to fetch price of ${product.url}...`);
+            await this.driver!.get(product.url);
             try {
-                // Try making regex from string
-                product.priceRemoveChars = new RegExp(product.priceRemoveChars, 'g');
+                await this.driver!.wait(until.elementLocated(By.xpath(product.priceElementLocator)), product.priceLocateTimeout);
+                const priceElem = await this.driver!.findElement(By.xpath(product.priceElementLocator));
+                try {
+                    // Try making regex from string
+                    product.priceRemoveChars = new RegExp(product.priceRemoveChars, 'g');
+                } catch (err) {
+                    // Not RegExp; use as string
+                }
+                let amount = (await priceElem.getText()).replace(product.priceRemoveChars, '');
+                return {
+                    amount,
+                    prodId: product.id!,
+                    created: new Date().toISOString(),
+                };
             } catch (err) {
-                // Not RegExp; use as string
+                logError(`Failed attempt #${this.loadCount}/${product.priceLocateRetries} to locate price element`);
             }
-            let amount = (await priceElem.getText()).replace(product.priceRemoveChars, '');
-            return {
-                amount,
-                prodId: product.id!,
-                created: new Date().toISOString(),
-            };
-        } catch (err) {
-            logError(`Could not locate element with "${product.priceElementLocator}" (time out ${product.priceLocateTimeout}ms) for product ${product.descr || product.url}`);
-            await this.shutdown();
-            return;
         }
+        logError(`Failed overall to locate price of ${product.url}`);
+        await this.shutdown();
+        return;
     }
 }

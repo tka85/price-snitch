@@ -5,7 +5,8 @@
   "main": "app.js",
   "scripts": {
     "test": "mocha --timeout 1600000 --exit ./test/**/*.spec.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "start": "DEBUG=price-tracker:* ts-node ./src/app.ts"
   },
   "repository": {
     "type": "git",
@@ -27,7 +28,7 @@
   "dependencies": {
     "@tsconfig/node18": "1.0.1",
     "@types/selenium-webdriver": "4.1.9",
-    "chromedriver": "108.0.0",
+    "chromedriver": "109.0.0",
     "cron-parser": "4.7.1",
     "debug": "4.3.4",
     "knex": "2.4.2",

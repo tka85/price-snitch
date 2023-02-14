@@ -11,6 +11,7 @@ const logError = getErrorLogger('app');
 (async () => {
     const datastore = ObjectFactory.getDatastore();
     const validator = ObjectFactory.getValidator();
+    const notifier = ObjectFactory.getNotifier();
     const crawler = new Crawler({
         webdriverParams: config.webdriver
     });
@@ -21,6 +22,7 @@ const logError = getErrorLogger('app');
         try {
             validator.validateProduct(product);
         } catch (err) {
+            logError(err);
             continue;
         }
 
@@ -28,10 +30,11 @@ const logError = getErrorLogger('app');
             // Insert product if not in db; get the assigned id
             product.id = await datastore.insertProduct(product);
         } catch (err) {
+            logError(err);
             continue;
         }
 
-        await scheduler.loadCron(product.id);
+        await scheduler.loadRuntimes(product.id);
     }
 
     while (true) {
@@ -43,16 +46,19 @@ const logError = getErrorLogger('app');
                 const price = await crawler.scanProduct(product);
                 if (price) {
                     await datastore.insertPrice(price);
-                    log('Inserted price', price);
+                    await notifier.sendSignificantPriceChangeNotification(product);
                 } else {
                     await datastore.insertInvalidPrice(pid);
                 }
             } catch (err) {
                 logError(err);
             }
+            await crawler.shutdown();
         }
-        log('sleeping...');
-        await sleep(60000);
+        await scheduler.checkCronmapRefills();
+        const sleepTimeMs = 30000;
+        log(`sleeping ${sleepTimeMs / 1000 / 60} minutes...`);
+        await sleep(sleepTimeMs);
     }
 
     // crawler.shutdown().then(() => { process.exit(0); });

@@ -18,12 +18,13 @@ export type Product = {
     cron: string;
     priceElementLocator: string;
     priceLocateTimeout: number;
+    priceLocateRetries: number;
     priceCurrency: string;
     priceThousandSeparator: string;
     priceDecimalSeparator: string;
     priceRemoveChars: RegExp | string;
-    notifyPriceIncreaseRatio: number;
-    notifyPriceDecreaseRatio: number;
+    notifyPriceIncrease: number;
+    notifyPriceDecrease: number;
     created?: string;
 };
 
@@ -34,12 +35,13 @@ export type DbProduct = {
     cron: string;
     price_element_locator: string;
     price_locate_timeout: number;
+    price_locate_retries: number;
     price_currency: string;
     price_thousand_separator: string;
     price_decimal_separator: string;
     price_remove_chars_regex: RegExp | string;
-    notify_price_increase_ratio: number;
-    notify_price_decrease_ratio: number;
+    notify_price_increase: number;
+    notify_price_decrease: number;
     created?: string;
 };
 
@@ -55,4 +57,22 @@ export type DbPrice = {
     amount: string;
     prod_id: number;
     created?: string;
+};
+
+export type PriceChange = {
+    prodId: number;
+    prevAmount: string;
+    amount: string;
+    amountDiff: string;
+    percentDiff: number;
+    created: string;
+};
+
+export type DbPriceChange = {
+    prod_id: number;
+    prev_amount: string;
+    amount: string;
+    amount_diff: string;
+    percent_diff: number;
+    created: string;
 };
