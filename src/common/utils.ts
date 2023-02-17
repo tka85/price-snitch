@@ -33,3 +33,7 @@ export function getLogger(module: string): Function {
 export function getErrorLogger(module: string): Function {
     return Debug(`${name}:${version}:${module}:ERROR`);
 }
+
+export function evalPercentDiff(fromAmount: number, toAmount: number): number {
+    return Math.ceil((toAmount - fromAmount) * 100 / fromAmount);
+}

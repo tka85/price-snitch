@@ -1,8 +1,8 @@
-import { getLogger } from './common/utils';
+import { evalPercentDiff, getLogger } from './common/utils';
 import knex, { Knex } from 'knex';
 import { TABLES } from './common/const';
 import { DataConverter } from './DataConverter';
-import { DbPriceChange, Price, Product } from './common/types';
+import { Price, PriceChange, Product } from './common/types';
 
 const log = getLogger('Datastore');
 // const logError = getErrorLogger('Datastore');
@@ -43,7 +43,7 @@ export class Datastore {
             .where({ prod_id: productId });
         if (mostRecentLimit) {
             query
-                .orderBy('created', 'desc')
+                .orderBy('id', 'desc')
                 .limit(mostRecentLimit);
         }
         const result = await query;
@@ -70,40 +70,93 @@ export class Datastore {
 
     // This operation always inserts a new price record (differentiaded by `created` timestamp)
     async insertPrice(price: Price): Promise<void> {
-        await this.db(TABLES.prices)
-            .insert(DataConverter.toDbPrice(price));
-        const prod = await this.getProductById(price.prodId);
-        log(`Added new price for product "${prod.descr ?? prod.url}":`, price);
+        const lastKnownPrice = await this.getLastKnownPrice(price.prodId);
+        if (!lastKnownPrice) {
+            log(`No previous prices; adding first price:`, price);
+            await this.db(TABLES.prices)
+                .insert(DataConverter.toDbPrice(price));
+        } else {
+            log(`Last known price for prod ${price.prodId}:`, lastKnownPrice.amount);
+            if (lastKnownPrice.amount !== price.amount) {
+                const fromAmount = lastKnownPrice.amount;
+                const toAmount = price.amount;
+                log(`Detected a price change for prod ${price.prodId} from ${fromAmount} to ${toAmount}`);
+                await this.db(TABLES.prices)
+                    .insert(DataConverter.toDbPrice(price));
+                const priceChange: PriceChange = {
+                    prodId: price.prodId,
+                    fromAmount: lastKnownPrice.amount,
+                    toAmount: price.amount,
+                    amountDiff: toAmount - fromAmount,
+                    percentDiff: evalPercentDiff(fromAmount, toAmount)
+                };
+                await this.insertPriceChange(priceChange);
+                log(`Added price for prod ${price.prodId}`, price);
+            } else {
+                log(`No price change for prod ${price.prodId}; retaining last known price ${lastKnownPrice.amount}`);
+            }
+        }
         return Promise.resolve();
     }
 
     async insertInvalidPrice(prodId: number) {
-        const invalidPrice = {
-            amount: '-1',
+        const invalidPrice: Price = {
+            amount: -1,
             prodId,
             created: new Date().toISOString(),
         };
-        log(`Inserting invalid price for product ${prodId}`);
+        log(`Inserting invalid price for prod ${prodId}`);
         await this.db(TABLES.prices)
             .insert(DataConverter.toDbPrice(invalidPrice));
     }
 
-    async evalProductPriceChange(prodId: number): Promise<DbPriceChange> {
-        return await this.db.raw(`
-        select prod_id, prev_amount, amount, amount - prev_amount as amount_diff, (amount - prev_amount) * 1.0 / prev_amount as percent_diff, created
-        from (
-                -- get price diff of last 2 readings
-                select ${TABLES.prices}.*,
-                        lag(amount) over (partition by prod_id order by created) as prev_amount
-                from (
-                    -- get most recent 2 readings per product
-                    select id, amount, prod_id, created
-                    from (select ${TABLES.prices}.*, row_number() over (partition by prod_id order by created desc) as rn
-                        from ${TABLES.prices}
-                        where prod_id = ${prodId} 
-                            and amount <> -1) as ${TABLES.prices}
-                    where rn in (1,2)) ${TABLES.prices}
-            ) as ${TABLES.prices}
-        where prev_amount is not null`);
+    async getSignificantPriceChange({
+        prodId,
+        significantPriceIncreasePercent,
+        significantPriceDecreasePercent
+    }): Promise<PriceChange | undefined> {
+        const result = await this.db.raw(`
+        SELECT prod_id, from_amount, to_amount, to_amount - from_amount as amount_diff, (to_amount - from_amount) * 100 / from_amount as percent_diff, created
+        FROM (
+                -- get price diff of last 2 reading
+                SELECT id, LAG(amount) OVER (ORDER BY id) AS from_amount, amount AS to_amount, prod_id, created
+                FROM (
+                    -- get most recent 2 prices per product
+                    SELECT id, amount, prod_id, created
+                    FROM (
+                        -- assign row numbers in reverse order of creation time i.e. most recent price row number = 1 etc.
+                        SELECT prices.*, ROW_NUMBER() OVER (ORDER BY id DESC) AS rn
+                        FROM ${TABLES.prices}
+                        WHERE prod_id=${prodId} AND amount <> -1
+                        ) AS ${TABLES.prices}
+                    WHERE rn IN (1,2)
+                ) ${TABLES.prices}
+             ) AS ${TABLES.prices}
+        WHERE from_amount IS NOT NULL 
+            AND (percent_diff <= -${significantPriceDecreasePercent || Number.MAX_SAFE_INTEGER} 
+                OR percent_diff >= ${significantPriceIncreasePercent || Number.MAX_SAFE_INTEGER})`);
+        if (result[0]) {
+            return DataConverter.toPriceChange(result[0]);
+        }
+    }
+
+    private async insertPriceChange(priceChange: PriceChange) {
+        await this.db(TABLES.priceChanges)
+            .insert(DataConverter.toDbPriceChange(priceChange));
+        log(`Added price change for prod ${priceChange.prodId}`, priceChange);
+    }
+
+    private async getLastKnownPrice(prodId: number): Promise<Price | undefined> {
+        const result = await this.db(TABLES.prices)
+            .select()
+            .where({ prod_id: prodId })
+            .orderBy('id', 'desc')
+            .limit(1)
+            .first();
+
+        if (!result) {
+            return;
+        }
+        return DataConverter.toPrice(result);
     }
 }

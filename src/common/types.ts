@@ -23,8 +23,8 @@ export type Product = {
     priceThousandSeparator: string;
     priceDecimalSeparator: string;
     priceRemoveChars: RegExp | string;
-    notifyPriceIncrease: number;
-    notifyPriceDecrease: number;
+    notifyPriceIncreasePercent: number;
+    notifyPriceDecreasePercent: number;
     created?: string;
 };
 
@@ -40,14 +40,14 @@ export type DbProduct = {
     price_thousand_separator: string;
     price_decimal_separator: string;
     price_remove_chars_regex: RegExp | string;
-    notify_price_increase: number;
-    notify_price_decrease: number;
+    notify_price_increase_percent: number;
+    notify_price_decrease_percent: number;
     created?: string;
 };
 
 export type Price = {
     id?: number;
-    amount: string;
+    amount: number;
     prodId: number;
     created?: string;
 };
@@ -61,18 +61,19 @@ export type DbPrice = {
 
 export type PriceChange = {
     prodId: number;
-    prevAmount: string;
-    amount: string;
-    amountDiff: string;
+    fromAmount: number;
+    toAmount: number;
+    amountDiff: number;
     percentDiff: number;
-    created: string;
+    created?: string;
 };
 
 export type DbPriceChange = {
+    id?: number;
     prod_id: number;
-    prev_amount: string;
-    amount: string;
+    from_amount: string;
+    to_amount: string;
     amount_diff: string;
-    percent_diff: number;
-    created: string;
+    percent_diff: string;
+    created?: string;
 };

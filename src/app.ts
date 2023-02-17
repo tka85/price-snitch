@@ -30,7 +30,7 @@ const logError = getErrorLogger('app');
             // Insert product if not in db; get the assigned id
             product.id = await datastore.insertProduct(product);
         } catch (err) {
-            logError(err);
+            logError(`Product "${product.url}" failed validation`, err);
             continue;
         }
 
@@ -48,15 +48,17 @@ const logError = getErrorLogger('app');
                     await datastore.insertPrice(price);
                     await notifier.sendSignificantPriceChangeNotification(product);
                 } else {
+                    // Leave trace in DB that we couldn't locate price in webpage
                     await datastore.insertInvalidPrice(pid);
                 }
             } catch (err) {
                 logError(err);
             }
-            await crawler.shutdown();
+            // await crawler.shutdown();
         }
+        await crawler.shutdown();
         await scheduler.checkCronmapRefills();
-        const sleepTimeMs = 30000;
+        const sleepTimeMs = 10000;
         log(`sleeping ${sleepTimeMs / 1000 / 60} minutes...`);
         await sleep(sleepTimeMs);
     }

@@ -2,7 +2,7 @@ import { Browser, Builder, By, until, WebDriver } from 'selenium-webdriver';
 import { Options } from 'selenium-webdriver/chrome';
 import { PageLoadStrategy } from 'selenium-webdriver/lib/capabilities';
 import { CrawlerParams, Price, Product } from './common/types';
-import { getLogger, getErrorLogger } from './common/utils';
+import { getLogger, getErrorLogger, clearAllStorage } from './common/utils';
 import config from '../config.json';
 
 const log = getLogger('Crawler');
@@ -55,6 +55,7 @@ export class Crawler {
         this.driver.get = async (url: string): Promise<void> => {
             await that.seleniumGet(url);
         };
+        clearAllStorage(this.driver);
     }
 
     async shutdown(): Promise<void> {
@@ -69,6 +70,7 @@ export class Crawler {
         if (!this.driver) {
             await this.init();
         }
+        this.loadCount = 0;
         while (this.loadCount < product.priceLocateRetries) {
             this.loadCount++;
             log(`Attempt #${this.loadCount}/${product.priceLocateRetries} to fetch price of ${product.url}...`);
@@ -82,14 +84,23 @@ export class Crawler {
                 } catch (err) {
                     // Not RegExp; use as string
                 }
-                let amount = (await priceElem.getText()).replace(product.priceRemoveChars, '');
+                const amountStr = await priceElem.getText();
+                const amountStrNormalized = amountStr.replace(product.priceRemoveChars, '')
+                    .replace(product.priceThousandSeparator, '')
+                    .replace(product.priceDecimalSeparator, '.');
+                const amount = parseInt(amountStrNormalized, 10);
+                if (Number.isNaN(amount)) {
+                    logError(`Located price text "${amountStr}" => normalized to "${amountStrNormalized}" => parsed to NaN for prod ${product.id}`);
+                    break;
+                }
+                log(`Located price string "${amountStrNormalized}" parsed as number ${amount}`);
                 return {
                     amount,
                     prodId: product.id!,
                     created: new Date().toISOString(),
                 };
             } catch (err) {
-                logError(`Failed attempt #${this.loadCount}/${product.priceLocateRetries} to locate price element`);
+                logError(`Failed attempt #${this.loadCount}/${product.priceLocateRetries} to locate price element`, err);
             }
         }
         logError(`Failed overall to locate price of ${product.url}`);

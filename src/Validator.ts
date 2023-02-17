@@ -9,6 +9,9 @@ export class Validator {
         if (!this.validateUrl(prod.url)) {
             throw new Error(`Invalid product URL "${prod.url}"`);
         }
+        if (!prod.notifyPriceDecreasePercent && !prod.notifyPriceIncreasePercent) {
+            throw new Error(`Product ${prod.url} is configured with null for both 'notifyPriceDecreasePercent' and 'notifyPriceIncreasePercent'`);
+        }
         return true;
     }
 
