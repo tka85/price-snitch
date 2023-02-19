@@ -43,9 +43,9 @@ const logError = getErrorLogger('app');
             const product = await datastore.getProductById(pid);
             log(`Scanning price for prod ${pid} ["${product.descr || product.url}]`);
             try {
-                const price = await crawler.scanProduct(product);
+                const price = await crawler.crawlProductPage(product);
                 if (price) {
-                    await datastore.insertPrice(price);
+                    await datastore.insertPriceChange(price);
                     await notifier.sendSignificantPriceChangeNotification(product);
                 } else {
                     // Leave trace in DB that we couldn't locate price in webpage

@@ -1,7 +1,7 @@
 import { Browser, Builder, By, until, WebDriver } from 'selenium-webdriver';
 import { Options } from 'selenium-webdriver/chrome';
 import { PageLoadStrategy } from 'selenium-webdriver/lib/capabilities';
-import { CrawlerParams, Price, Product } from './common/types';
+import { CrawlerParams, CrawlPageInput, CrawlPrice } from './common/types';
 import { getLogger, getErrorLogger, clearAllStorage } from './common/utils';
 import config from '../config.json';
 
@@ -66,44 +66,52 @@ export class Crawler {
         }
     }
 
-    async scanProduct(product: Product): Promise<Price | undefined> {
+    async crawlProductPage({
+        prodId,
+        url,
+        priceLocateRetries,
+        priceXpath,
+        priceLocateTimeout,
+        priceRemoveChars,
+        priceThousandSeparator,
+        priceDecimalSeparator
+    }: CrawlPageInput): Promise<CrawlPrice | undefined> {
         if (!this.driver) {
             await this.init();
         }
         this.loadCount = 0;
-        while (this.loadCount < product.priceLocateRetries) {
+        while (this.loadCount < priceLocateRetries) {
             this.loadCount++;
-            log(`Attempt #${this.loadCount}/${product.priceLocateRetries} to fetch price of ${product.url}...`);
-            await this.driver!.get(product.url);
+            log(`Attempt #${this.loadCount}/${priceLocateRetries} to fetch price of ${url}...`);
+            await this.driver!.get(url);
             try {
-                await this.driver!.wait(until.elementLocated(By.xpath(product.priceElementLocator)), product.priceLocateTimeout);
-                const priceElem = await this.driver!.findElement(By.xpath(product.priceElementLocator));
+                await this.driver!.wait(until.elementLocated(By.xpath(priceXpath)), priceLocateTimeout);
+                const priceElem = await this.driver!.findElement(By.xpath(priceXpath));
                 try {
                     // Try making regex from string
-                    product.priceRemoveChars = new RegExp(product.priceRemoveChars, 'g');
+                    priceRemoveChars = new RegExp(priceRemoveChars, 'g');
                 } catch (err) {
                     // Not RegExp; use as string
                 }
                 const amountStr = await priceElem.getText();
-                const amountStrNormalized = amountStr.replace(product.priceRemoveChars, '')
-                    .replace(product.priceThousandSeparator, '')
-                    .replace(product.priceDecimalSeparator, '.');
+                const amountStrNormalized = amountStr.replace(priceRemoveChars, '')
+                    .replace(priceThousandSeparator, '')
+                    .replace(priceDecimalSeparator, '.');
                 const amount = parseInt(amountStrNormalized, 10);
                 if (Number.isNaN(amount)) {
-                    logError(`Located price text "${amountStr}" => normalized to "${amountStrNormalized}" => parsed to NaN for prod ${product.id}`);
+                    logError(`Located price text "${amountStr}" and normalized to "${amountStrNormalized}" but parsed to NaN for prod ${prodId}`);
                     break;
                 }
                 log(`Located price string "${amountStrNormalized}" parsed as number ${amount}`);
                 return {
+                    prodId,
                     amount,
-                    prodId: product.id!,
-                    created: new Date().toISOString(),
                 };
             } catch (err) {
-                logError(`Failed attempt #${this.loadCount}/${product.priceLocateRetries} to locate price element`, err);
+                logError(`Failed attempt #${this.loadCount}/${priceLocateRetries} to locate price element`, err);
             }
         }
-        logError(`Failed overall to locate price of ${product.url}`);
+        logError(`Overall failure to locate price of prodId ${prodId} > URL ${url}`);
         await this.shutdown();
         return;
     }

@@ -6,8 +6,7 @@
         "proxyServerUrl": null
     },
     "db": "priceTracker.db",
-    "defaults": {
-        "cron": "0 */12 * * *",
+    "NOT_USED_defaults": {
         "priceCurrency": "€",
         "priceThousandSeparator": ".",
         "priceDecimalSeparator": ",",
@@ -16,24 +15,5 @@
         "priceRemoveChars": "\\s",
         "notifyPriceIncreasePercent": 20,
         "notifyPriceDecreasePercent": 15
-    },
-    "products": [
-        {
-            "url": "https://www.amazon.fr/gp/product/B09MMCJCNJ/",
-            "description": "Steelcase Leap Chaise de Bureau et de Jeu Ergonomique",
-            "priceElementLocator": "//span[@class='a-price-whole']",
-            "cron": "* * * * *",
-            "priceThousandSeparator": " ",
-            "notifyPriceDecreasePercent": 20
-        },
-        {
-            "url": "https://www.amazon.fr/Waterpik-WP-660EU-Dentaire-Hydropulseur-Professional/dp/B073WGYSF9",
-            "description": "Waterpik - Hydropulseur Ultra Professional, Jet Dentaire",
-            "priceElementLocator": "//span[@class='a-price-whole']",
-            "cron": "* * * * *",
-            "priceThousandSeparator": " ",
-            "notifyPriceDecreasePercent": 1,
-            "notifyPriceIncreasePercent": 1
-        }
-    ]
+    }
 }

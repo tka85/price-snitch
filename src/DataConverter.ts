@@ -1,67 +1,79 @@
-import { DbPrice, DbPriceChange, DbProduct, Price, PriceChange, Product, WithoutId } from './common/types';
+import { DbPriceChange, DbNotification, DbProduct, PriceChange, Notification, Product, WithoutId, DbShop, Shop, DbUser, User, DbSubscription, Subscription } from './common/types';
 
 export class DataConverter {
+    static toShop(dbShop: DbShop): Shop {
+        return {
+            id: dbShop.id,
+            name: dbShop.name,
+            priceXpath: dbShop.price_xpath,
+            priceLocateTimeout: dbShop.price_locate_timeout,
+            priceLocateRetries: dbShop.price_locate_retries,
+            priceCurrency: dbShop.price_currency,
+            priceThousandSeparator: dbShop.price_thousand_separator,
+            priceDecimalSeparator: dbShop.price_decimal_separator,
+            priceRemoveChars: dbShop.price_remove_chars,
+            created: dbShop.created,
+        };
+    }
+
+    static toDbShop(shop: WithoutId<Shop>): DbShop {
+        return {
+            name: shop.name,
+            price_xpath: shop.priceXpath,
+            price_locate_timeout: shop.priceLocateTimeout,
+            price_locate_retries: shop.priceLocateRetries,
+            price_currency: shop.priceCurrency,
+            price_thousand_separator: shop.priceThousandSeparator,
+            price_decimal_separator: shop.priceDecimalSeparator,
+            price_remove_chars: shop.priceRemoveChars,
+            created: shop.created || (new Date()).toISOString(),
+        };
+    }
+
+    static toUser(dbUser: DbUser): User {
+        return {
+            id: dbUser.id,
+            moniker: dbUser.moniker,
+            created: dbUser.created,
+        };
+    }
+
+    static toDbUser(user: WithoutId<User>): DbUser {
+        return {
+            moniker: user.moniker,
+            created: user.created || (new Date()).toISOString(),
+        };
+    }
+
     static toProduct(dbProduct: DbProduct): Product {
         return {
             id: dbProduct.id,
+            shopId: dbProduct.shop_id,
             url: dbProduct.url,
+            title: dbProduct.title,
             descr: dbProduct.descr,
-            cron: dbProduct.cron,
-            priceElementLocator: dbProduct.price_element_locator,
-            priceLocateTimeout: dbProduct.price_locate_timeout,
-            priceLocateRetries: dbProduct.price_locate_retries,
-            priceCurrency: dbProduct.price_currency,
-            priceThousandSeparator: dbProduct.price_thousand_separator,
-            priceDecimalSeparator: dbProduct.price_decimal_separator,
-            priceRemoveChars: dbProduct.price_remove_chars_regex,
-            notifyPriceIncreasePercent: dbProduct.notify_price_increase_percent,
-            notifyPriceDecreasePercent: dbProduct.notify_price_decrease_percent,
             created: dbProduct.created,
         };
     }
 
     static toDbProduct(product: WithoutId<Product>): WithoutId<DbProduct> {
         return {
+            shop_id: product.shopId,
             url: product.url,
+            title: product.title,
             descr: product.descr,
-            cron: product.cron,
-            price_element_locator: product.priceElementLocator,
-            price_locate_timeout: product.priceLocateTimeout,
-            price_locate_retries: product.priceLocateRetries,
-            price_currency: product.priceCurrency,
-            price_thousand_separator: product.priceThousandSeparator,
-            price_decimal_separator: product.priceDecimalSeparator,
-            price_remove_chars_regex: product.priceRemoveChars,
-            notify_price_increase_percent: product.notifyPriceIncreasePercent,
-            notify_price_decrease_percent: product.notifyPriceDecreasePercent,
             created: product.created || (new Date()).toISOString(),
-        };
-    }
-
-    static toPrice(dbPrice: DbPrice): Price {
-        return {
-            id: dbPrice.id,
-            amount: parseInt(dbPrice.amount, 10),
-            prodId: dbPrice.prod_id,
-            created: dbPrice.created,
-        };
-    }
-
-    static toDbPrice(price: WithoutId<Price>): WithoutId<DbPrice> {
-        return {
-            amount: price.amount.toFixed(0),
-            prod_id: price.prodId,
-            created: price.created || (new Date()).toISOString(),
         };
     }
 
     static toPriceChange(dbPriceChange: DbPriceChange): PriceChange {
         return {
+            id: dbPriceChange.id,
             prodId: dbPriceChange.prod_id,
-            fromAmount: parseInt(dbPriceChange.from_amount, 10),
-            toAmount: parseInt(dbPriceChange.to_amount, 10),
-            amountDiff: parseInt(dbPriceChange.amount_diff, 10),
-            percentDiff: parseInt(dbPriceChange.percent_diff, 10),
+            amount: dbPriceChange.amount,
+            prevAmount: dbPriceChange.prev_amount,
+            amountDiff: dbPriceChange.amount_diff,
+            percentDiff: dbPriceChange.percent_diff,
             created: dbPriceChange.created,
         };
     }
@@ -69,13 +81,49 @@ export class DataConverter {
     static toDbPriceChange(priceChange: WithoutId<PriceChange>): WithoutId<DbPriceChange> {
         return {
             prod_id: priceChange.prodId,
-            from_amount: priceChange.fromAmount.toFixed(0),
-            to_amount: priceChange.toAmount.toFixed(0),
-            amount_diff: priceChange.amountDiff.toFixed(0),
-            percent_diff: priceChange.percentDiff.toFixed(0),
+            amount: priceChange.amount,
+            prev_amount: priceChange.prevAmount,
+            amount_diff: priceChange.amountDiff,
+            percent_diff: priceChange.percentDiff,
             created: priceChange.created || (new Date()).toISOString(),
         };
     }
 
+    static toSubscription(dbSubscription: DbSubscription): Subscription {
+        return {
+            userId: dbSubscription.user_id,
+            prodId: dbSubscription.prod_id,
+            notifyMaxFrequency: dbSubscription.notify_max_frequency,
+            notifyPriceIncreasePercent: dbSubscription.notify_price_increase_percent,
+            notifyPriceDecreasePercent: dbSubscription.notify_price_decrease_percent,
+            created: dbSubscription.created,
+        };
+    }
 
+    static toDbSubscription(subscription: WithoutId<Subscription>): WithoutId<DbSubscription> {
+        return {
+            user_id: subscription.userId,
+            prod_id: subscription.prodId,
+            notify_max_frequency: subscription.notifyMaxFrequency,
+            notify_price_increase_percent: subscription.notifyPriceIncreasePercent,
+            notify_price_decrease_percent: subscription.notifyPriceDecreasePercent,
+            created: subscription.created || (new Date()).toISOString(),
+        };
+    }
+
+    static toNotification(dbNotification: DbNotification): Notification {
+        return {
+            userId: dbNotification.user_id,
+            priceId: dbNotification.price_id,
+            created: dbNotification.created,
+        };
+    }
+
+    static toDbNotification(notification: WithoutId<Notification>): WithoutId<DbNotification> {
+        return {
+            user_id: notification.userId,
+            price_id: notification.priceId,
+            created: notification.created || (new Date()).toISOString(),
+        };
+    }
 }
