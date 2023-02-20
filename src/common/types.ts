@@ -16,11 +16,13 @@ export enum MAX_NOTIFICATION_FREQUENCY {
     weekly = 3,
 };
 
+export const INVALID_PRICE_AMOUNT = -1;
+
 export const INVALID_PRICE_CHANGE: Omit<PriceChange, 'prodId'> = {
-    amount: -1,
-    prevAmount: -1,
-    amountDiff: -1,
-    percentDiff: -1,
+    amount: INVALID_PRICE_AMOUNT,
+    prevAmount: INVALID_PRICE_AMOUNT,
+    amountDiff: INVALID_PRICE_AMOUNT,
+    percentDiff: INVALID_PRICE_AMOUNT,
     created: new Date().toISOString(),
 };
 
@@ -35,9 +37,8 @@ export type CrawlerParams = {
     webdriverParams?: CrawlerWebdriverParams;
 };
 
-export type CrawlPageInput = {
-    prodId: number;
-    url: string;
+export type CrawlPagesInput = {
+    prodIdUrlMap: Map<number, string>;
     priceLocateRetries: number;
     priceXpath: string;
     priceLocateTimeout: number;
@@ -46,9 +47,11 @@ export type CrawlPageInput = {
     priceDecimalSeparator: string;
 };
 
-export type CrawlPrice = {
+export type CrawlData = {
     prodId: number;
     amount: number;
+    //TODO: extract prod title from page and update in db if it has changed
+    title?: string;
 };
 
 export type Shop = {
@@ -94,7 +97,6 @@ export type Product = {
     shopId: number;
     url: string;
     title?: string;
-    descr?: string;
     created?: string;
 };
 
@@ -103,7 +105,6 @@ export type DbProduct = {
     shop_id: number;
     url: string;
     title?: string;
-    descr?: string;
     created: string;
 };
 
@@ -134,7 +135,7 @@ export type Subscription = {
     notifyMaxFrequency: MAX_NOTIFICATION_FREQUENCY;
     notifyPriceIncreasePercent?: number;
     notifyPriceDecreasePercent?: number;
-    userDescr?: number;
+    userNote?: number;
     created?: string;
 };
 
@@ -145,7 +146,7 @@ export type DbSubscription = {
     notify_max_frequency: MAX_NOTIFICATION_FREQUENCY;
     notify_price_increase_percent?: number;
     notify_price_decrease_percent?: number;
-    user_descr?: number;
+    user_note?: number;
     created: string;
 };
 

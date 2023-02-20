@@ -2,10 +2,14 @@
     "webdriver": {
         "disableExtensions": true,
         "incognito": true,
-        "headless": true,
+        "headless": false,
         "proxyServerUrl": null
     },
     "db": "priceTracker.db",
+    "crawler": {
+        "poolSize": 2,
+        "productsPerCrawler": 2
+    },
     "NOT_USED_defaults": {
         "priceCurrency": "€",
         "priceThousandSeparator": ".",

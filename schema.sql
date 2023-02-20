@@ -22,7 +22,6 @@ CREATE TABLE IF NOT EXISTS `products`(
     shop_id INTEGER NOT NULL,
     url VARCHAR(2000) NOT NULL UNIQUE,
     title VARCHAR(1000),
-    descr VARCHAR(1000),
     created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
@@ -61,9 +60,16 @@ CREATE TABLE IF NOT EXISTS `notifications`(
     FOREIGN KEY (price_id) REFERENCES prices(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- insert into shops(name, price_xpath, price_currency, price_thousand_separator, price_decimal_separator, price_remove_chars) values('amazon.fr', "//span[@class='a-price-whole']", '€', ' ', ',', '\s');
--- insert into products(shop_id,url,title) values(1,'https://www.amazon.fr/gp/product/B09MMCJCNJ/','Steelcase Leap Chaise de Bureau et de Jeu Ergonomique');
--- insert into products(shop_id,url,title) values(1,'https://www.amazon.fr/Waterpik-WP-660EU-Dentaire-Hydropulseur-Professional/dp/B073WGYSF9','Waterpik - Hydropulseur Ultra Professional, Jet Dentaire');
--- insert into users(moniker) values('quick-brown-fox'),('lazy-blue-dog');
--- insert into subscriptions(user_id,prod_id,notify_price_increase_percent, notify_price_decrease_percent) values (1,1,null,6),(1,2,6,6);
--- insert into subscriptions(user_id,prod_id,notify_price_increase_percent, notify_price_decrease_percent) values (2,1,7,null),(2,2,7,7);
+insert into shops(name, price_xpath, price_currency, price_thousand_separator, price_decimal_separator, price_remove_chars) values('amazon.fr', "//span[@class='a-price-whole']", '€', ' ', ',', '\s');
+
+insert into products(shop_id,url,title) values(1,'https://www.amazon.fr/gp/product/B09MMCJCNJ/','Steelcase Leap Chaise de Bureau et de Jeu Ergonomique');
+insert into products(shop_id,url,title) values(1,'https://www.amazon.fr/Waterpik-WP-660EU-Dentaire-Hydropulseur-Professional/dp/B073WGYSF9','Waterpik - Hydropulseur Ultra Professional, Jet Dentaire');
+insert into products(shop_id,url,title) values(1,'https://www.amazon.fr/Baby-Einstein-Hape-Jouet-musical/dp/B07QXL2T8Z','Baby Einstein Hape Magic Touch Tablet Jouets musicaux en bois');
+insert into products(shop_id,url,title) values(1,'https://www.amazon.fr/gp/product/B07BCNJV9N','Tefal Ice Force Couteau à éplucher 9 cm, Couteau de cuisine');
+insert into products(shop_id,url,title) values(1,'https://www.amazon.fr/gp/product/B09641TW4F','Columbia Childrens Firecamp™ Sledder 3 Wp');
+insert into products(shop_id,url,title) values(1,'https://www.amazon.fr/Villeroy-Boch-10-4600-2640-Assiette-Porcelaine/dp/B0002X801G','Villeroy & Boch Cellini Assiette petit-déjeuner, 22 cm, Porcelaine Premium, Blanc');
+insert into products(shop_id,url,title) values(1,'https://www.amazon.fr/Leonardo-014791-Puccini-Bourgogne-Transparent/dp/B00ZCKS500','Leonardo 014791 Puccini Set de 6 Verres Bourgogne Verre Transparent');
+
+insert into users(moniker) values('quick-brown-fox'),('lazy-blue-dog');
+insert into subscriptions(user_id,prod_id,notify_price_increase_percent, notify_price_decrease_percent) values (1,1,null,6),(1,2,6,6);
+insert into subscriptions(user_id,prod_id,notify_price_increase_percent, notify_price_decrease_percent) values (2,1,7,null),(2,2,7,7);

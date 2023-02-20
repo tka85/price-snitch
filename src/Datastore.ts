@@ -1,6 +1,6 @@
 import { evalPercentDiff, getLogger } from './common/utils';
 import knex, { Knex } from 'knex';
-import { CrawlPrice, INVALID_PRICE_CHANGE, Shop, TABLES } from './common/types';
+import { CrawlData, INVALID_PRICE_CHANGE, Shop, TABLES } from './common/types';
 import { DataConverter } from './DataConverter';
 import { PriceChange, Notification, Product } from './common/types';
 
@@ -31,8 +31,11 @@ export class Datastore {
         return (await this.db(TABLES.shops).select()).map(_ => DataConverter.toShop(_));
     }
 
-    async getAllProducts(): Promise<Product[]> {
-        return (await this.db(TABLES.products).select()).map(_ => DataConverter.toProduct(_));
+    async getAllProductsByShopId(shopId: number): Promise<Product[]> {
+        return (await this.db(TABLES.products)
+            .select()
+            .where({ shop_id: shopId }))
+            .map(_ => DataConverter.toProduct(_));
     }
 
     async getProductByUrl(url: string): Promise<Product> {
@@ -66,18 +69,18 @@ export class Datastore {
         let assignedId;
         if (await this.existsProduct(product.url)) {
             const dbProduct = await this.getProductByUrl(product.url);
-            log(`Product "${dbProduct.descr ?? dbProduct.url}" already in db with id: ${dbProduct.id}`);
+            log(`Product "${dbProduct.title ?? dbProduct.url}" already in db with id: ${dbProduct.id}`);
             assignedId = dbProduct.id;
         } else {
             [assignedId] = await this.db(TABLES.products)
                 .insert(DataConverter.toDbProduct(product));
-            log(`Inserted new product "${product.descr ?? product.url}" and assigned id: ${assignedId}`);
+            log(`Inserted new product "${product.title ?? product.url}" and assigned id: ${assignedId}`);
         }
         return Promise.resolve(assignedId);
     }
 
     // Append-only operation
-    async insertPriceChange(crawlPrice: CrawlPrice): Promise<void> {
+    async insertPriceChange(crawlPrice: CrawlData): Promise<void> {
         const lastKnownPrice = await this.getLastKnownPrice(crawlPrice.prodId);
         let priceChange: PriceChange;
         if (!lastKnownPrice) {
@@ -114,7 +117,7 @@ export class Datastore {
         }
     }
 
-    async insertInvalidPrice(prodId: number): Promise<void> {
+    async insertInvalidPriceChange(prodId: number): Promise<void> {
         log(`Inserting invalid price for prod ${prodId}`);
         const invalidPriceChange: PriceChange = Object.assign({ prodId }, INVALID_PRICE_CHANGE);
         await this.db(TABLES.price_changes)
@@ -138,7 +141,7 @@ export class Datastore {
     //                     -- assign row numbers in reverse order of creation time i.e. most recent price row number = 1 etc.
     //                     SELECT prices.*, ROW_NUMBER() OVER (ORDER BY id DESC) AS rn
     //                     FROM ${TABLES.prices}
-    //                     WHERE prod_id=${prodId} AND amount <> -1
+    //                     WHERE prod_id=${prodId} AND amount <> ${INVALID_PRICE_AMOUNT}
     //                     ) AS ${TABLES.prices}
     //                 WHERE rn IN (1,2)
     //             ) ${TABLES.prices}

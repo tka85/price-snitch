@@ -1,51 +1,72 @@
 import config from '../config.json';
 import { ObjectFactory } from './ObjectFactory';
 import { Crawler } from './Crawler';
-import { getLogger, getErrorLogger } from './common/utils';
+import { getErrorLogger } from './common/utils';
+import Pool from 'promise-pool-js';
+import { CrawlData, INVALID_PRICE_AMOUNT } from './common/types';
 
-const log = getLogger('run-crawlers');
 const logError = getErrorLogger('run-crawlers');
+const datastore = ObjectFactory.getDatastore();
+const pool = new Pool({
+    size: config.crawler.poolSize,
+    strategy: 'round-robin'
+});
+
+pool.on('after.each', async (discoveredData: CrawlData[]) => {
+    // console.log(`>>>>>>>>>>>>>>>>>>>> discoveredData`, INVALID_PRICE_AMOUNT, discoveredData);
+    for (const crawlPrice of discoveredData) {
+        try {
+            if (crawlPrice.amount !== INVALID_PRICE_AMOUNT) {
+                await datastore.insertPriceChange(crawlPrice);
+            } else {
+                // Leave trace in DB that we couldn't locate price for this prodId
+                await datastore.insertInvalidPriceChange(crawlPrice.prodId);
+            }
+        } catch (err) {
+            logError(err);
+        }
+    }
+});
 
 (async () => {
-    const datastore = ObjectFactory.getDatastore();
-    let crawler: Crawler;
-
-    const allShops = await datastore.getAllShops();
-    const allProducts = await datastore.getAllProducts();
-
-    // The products are all validated upon insert; not here
-
     while (true) {
-        for (const shop of allShops) {
-            crawler = new Crawler({
-                webdriverParams: config.webdriver
-            });
-            for (const prod of allProducts) {
-                log(`Scanning shop "${shop.name}" for prod "${prod.descr || prod.url}`);
+        const allShops = await datastore.getAllShops();
+        for (let shopIndex = 0; shopIndex < allShops.length; shopIndex++) {
+            const shop = allShops[shopIndex];
+            const allProducts = await datastore.getAllProductsByShopId(shop.id!);
+
+            for (let prodIndex = 0; prodIndex < allProducts.length; prodIndex++) {
+                let prodIdUrlMap: Map<number, string> = new Map();
+                // Construct batch for next crawler
+                for (let i = 0; i < config.crawler.productsPerCrawler; i++) {
+                    const prod = allProducts[prodIndex];
+                    if (prod) {
+                        prodIdUrlMap.set(prod.id!, prod.url!);
+                        prodIndex++;
+                    }
+                }
+                // Cancel out last incrementing or else we skip a product
+                prodIndex--;
+
+                const crawler: Crawler = new Crawler({
+                    webdriverParams: config.webdriver
+                });
                 try {
-                    const crawlPrice = await crawler.crawlProductPage({
-                        prodId: prod.id!,
-                        url: prod.url,
+                    pool.schedule(crawler.crawlProductPages.bind(crawler, {
+                        prodIdUrlMap,
                         priceLocateRetries: shop.priceLocateRetries,
                         priceXpath: shop.priceXpath,
                         priceLocateTimeout: shop.priceLocateTimeout,
                         priceRemoveChars: shop.priceRemoveChars,
                         priceThousandSeparator: shop.priceThousandSeparator,
                         priceDecimalSeparator: shop.priceDecimalSeparator,
-                    });
-                    if (crawlPrice) {
-                        await datastore.insertPriceChange(crawlPrice);
-                    } else {
-                        // Leave trace in DB that we couldn't locate price in webpage
-                        await datastore.insertInvalidPrice(prod.id!);
-                    }
+                    }));
                 } catch (err) {
                     logError(err);
                 }
             }
-            // Refresh crawler for each shop iterration
-            await crawler.shutdown();
         }
+        pool.all().then(_ => console.log('@@@@@@@@@@@@22 pool.all() called!!!', _));
     }
 })()
     .catch(err => {
