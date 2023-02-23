@@ -5,14 +5,14 @@ RUN apt-get autoclean && \
     apt-get update && \
     apt-get install -y curl jq sqlite3 gnupg
 
-WORKDIR /opt/price-tracker
+WORKDIR /opt/price-snitch
 
 COPY package*.json config.json schema.sql ./
 
 RUN npm install && \
-    ln -s /opt/price-tracker/node_modules/.bin/chromedriver /usr/local/bin && \
-    mkdir /opt/price-tracker/data && \
-    cat ./schema.sql | sqlite3 /opt/price-tracker/data/`jq -r .db ./config.json`
+    ln -s /opt/price-snitch/node_modules/.bin/chromedriver /usr/local/bin && \
+    mkdir /opt/price-snitch/data && \
+    cat ./schema.sql | sqlite3 /opt/price-snitch/data/`jq -r .db ./config.json`
 
 COPY . .
 
