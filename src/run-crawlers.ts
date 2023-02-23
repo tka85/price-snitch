@@ -1,10 +1,11 @@
 import config from '../config.json';
 import { ObjectFactory } from './ObjectFactory';
 import { Crawler } from './Crawler';
-import { getErrorLogger } from './common/utils';
+import { getErrorLogger, getLogger } from './common/utils';
 import Pool from 'promise-pool-js';
 import { CrawlData, INVALID_PRICE_AMOUNT } from './common/types';
 
+const log = getLogger('run-crawlers');
 const logError = getErrorLogger('run-crawlers');
 const datastore = ObjectFactory.getDatastore();
 const pool = new Pool({
@@ -13,14 +14,14 @@ const pool = new Pool({
 });
 
 pool.on('after.each', async (discoveredData: CrawlData[]) => {
-    // console.log(`>>>>>>>>>>>>>>>>>>>> discoveredData`, INVALID_PRICE_AMOUNT, discoveredData);
+    // console.log(`>>>>>>>>>>>>>>>>>>>> discoveredData`, discoveredData);
     for (const crawlPrice of discoveredData) {
         try {
             if (crawlPrice.amount !== INVALID_PRICE_AMOUNT) {
                 await datastore.insertPriceChange(crawlPrice);
             } else {
                 // Leave trace in DB that we couldn't locate price for this prodId
-                await datastore.insertInvalidPriceChange(crawlPrice.prodId);
+                await datastore.insertInvalidPriceChange({shopId: crawlPrice.shopId, prodId: crawlPrice.prodId});
             }
         } catch (err) {
             logError(err);
@@ -53,6 +54,7 @@ pool.on('after.each', async (discoveredData: CrawlData[]) => {
                 });
                 try {
                     pool.schedule(crawler.crawlProductPages.bind(crawler, {
+                        shopId: shop.id!,
                         prodIdUrlMap,
                         priceLocateRetries: shop.priceLocateRetries,
                         priceXpath: shop.priceXpath,

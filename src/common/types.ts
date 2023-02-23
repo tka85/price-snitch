@@ -18,7 +18,7 @@ export enum MAX_NOTIFICATION_FREQUENCY {
 
 export const INVALID_PRICE_AMOUNT = -1;
 
-export const INVALID_PRICE_CHANGE: Omit<PriceChange, 'prodId'> = {
+export const INVALID_PRICE_CHANGE = {
     amount: INVALID_PRICE_AMOUNT,
     prevAmount: INVALID_PRICE_AMOUNT,
     amountDiff: INVALID_PRICE_AMOUNT,
@@ -38,6 +38,7 @@ export type CrawlerParams = {
 };
 
 export type CrawlPagesInput = {
+    shopId: number;
     prodIdUrlMap: Map<number, string>;
     priceLocateRetries: number;
     priceXpath: string;
@@ -49,6 +50,7 @@ export type CrawlPagesInput = {
 
 export type CrawlData = {
     prodId: number;
+    shopId: number;
     amount: number;
     //TODO: extract prod title from page and update in db if it has changed
     title?: string;
@@ -111,6 +113,7 @@ export type DbProduct = {
 export type PriceChange = {
     id?: number;
     prodId: number;
+    shopId: number;
     amount: number;
     prevAmount: number;
     amountDiff: number;
@@ -121,6 +124,7 @@ export type PriceChange = {
 export type DbPriceChange = {
     id?: number;
     prod_id: number;
+    shop_id: number;
     amount: number;
     prev_amount: number;
     amount_diff: number;
@@ -153,13 +157,15 @@ export type DbSubscription = {
 export type Notification = {
     id?: number;
     userId: number;
-    priceId: number;
+    priceChangeId: number;
+    shopId: number;
     created?: string;
 };
 
 export type DbNotification = {
     id?: number;
     user_id: number;
-    price_id: number;
+    price_change_id: number;
+    shop_id: number;
     created: string;
 };

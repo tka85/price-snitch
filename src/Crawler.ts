@@ -1,7 +1,7 @@
 import { Browser, Builder, By, until, WebDriver } from 'selenium-webdriver';
 import { Options } from 'selenium-webdriver/chrome';
 import { PageLoadStrategy } from 'selenium-webdriver/lib/capabilities';
-import { createLongNameId } from 'mnemonic-id';
+import { createStoryId } from 'mnemonic-id';
 import { CrawlerParams, CrawlPagesInput, CrawlData, INVALID_PRICE_AMOUNT } from './common/types';
 import { getLogger, getErrorLogger, clearAllStorage } from './common/utils';
 import config from '../config.json';
@@ -42,7 +42,7 @@ export class Crawler {
         this.chromedriverOptions.setPageLoadStrategy(PageLoadStrategy.EAGER);
         // this.chromedriverOptions.setPageLoadStrategy(PageLoadStrategy.NONE);
 
-        this.name = createLongNameId(); // adj+adj+noun
+        this.name = createStoryId(); // "adj+noun+verb+adj+noun", 10^12 permutations, 48 max length
         this.driver = null; // created in init()
     }
 
@@ -71,6 +71,7 @@ export class Crawler {
     }
 
     async crawlProductPages({
+        shopId,
         prodIdUrlMap,
         priceLocateRetries,
         priceXpath,
@@ -89,8 +90,8 @@ export class Crawler {
             while (this.loadCount <= priceLocateRetries) {
                 this.loadCount++;
                 log(`Product crawler "${this.name}" attempt #${this.loadCount}/${priceLocateRetries} locating prodiId ${prodId} price at ${url}...`);
-                await this.driver!.get(url);
                 try {
+                    await this.driver!.get(url);
                     await this.driver!.wait(until.elementLocated(By.xpath(priceXpath)), priceLocateTimeout);
                     const priceElem = await this.driver!.findElement(By.xpath(priceXpath));
                     try {
@@ -111,6 +112,7 @@ export class Crawler {
                     log(`Product crawler "${this.name}" located price string "${amountStrNormalized}" parsed as number ${amount}`);
                     this.discoveredData.push({
                         prodId,
+                        shopId,
                         amount,
                     });
                     discoveredValidPrice = true;
@@ -122,6 +124,7 @@ export class Crawler {
             if (!discoveredValidPrice) {
                 logError(`Product crawler "${this.name}" overall failed to locate price of prodId ${prodId} at "${url}"`);
                 this.discoveredData.push({
+                    shopId,
                     prodId,
                     amount: INVALID_PRICE_AMOUNT
                 });
