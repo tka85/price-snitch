@@ -1,6 +1,6 @@
 import { DbPriceChange, DbNotification, DbProduct, PriceChange, Notification, Product, WithoutId, DbShop, Shop, DbUser, User, DbSubscription, Subscription } from './common/types';
 
-export class DataConverter {
+export class Converter {
     static toShop(dbShop: DbShop): Shop {
         return {
             id: dbShop.id,
@@ -67,6 +67,7 @@ export class DataConverter {
     static toPriceChange(dbPriceChange: DbPriceChange): PriceChange {
         return {
             id: dbPriceChange.id,
+            shopId: dbPriceChange.shop_id,
             prodId: dbPriceChange.prod_id,
             amount: dbPriceChange.amount,
             prevAmount: dbPriceChange.prev_amount,
@@ -78,6 +79,7 @@ export class DataConverter {
 
     static toDbPriceChange(priceChange: WithoutId<PriceChange>): WithoutId<DbPriceChange> {
         return {
+            shop_id: priceChange.shopId,
             prod_id: priceChange.prodId,
             amount: priceChange.amount,
             prev_amount: priceChange.prevAmount,
@@ -114,7 +116,8 @@ export class DataConverter {
     static toNotification(dbNotification: DbNotification): Notification {
         return {
             userId: dbNotification.user_id,
-            priceId: dbNotification.price_id,
+            priceChangeId: dbNotification.price_change_id,
+            shopId: dbNotification.shop_id,
             created: dbNotification.created,
         };
     }
@@ -122,7 +125,8 @@ export class DataConverter {
     static toDbNotification(notification: WithoutId<Notification>): WithoutId<DbNotification> {
         return {
             user_id: notification.userId,
-            price_id: notification.priceId,
+            price_change_id: notification.priceChangeId,
+            shop_id: notification.shopId,
             created: notification.created || (new Date()).toISOString(),
         };
     }
