@@ -51,7 +51,6 @@ export class DataConverter {
             shopId: dbProduct.shop_id,
             url: dbProduct.url,
             title: dbProduct.title,
-            descr: dbProduct.descr,
             created: dbProduct.created,
         };
     }
@@ -61,7 +60,6 @@ export class DataConverter {
             shop_id: product.shopId,
             url: product.url,
             title: product.title,
-            descr: product.descr,
             created: product.created || (new Date()).toISOString(),
         };
     }
@@ -96,6 +94,7 @@ export class DataConverter {
             notifyMaxFrequency: dbSubscription.notify_max_frequency,
             notifyPriceIncreasePercent: dbSubscription.notify_price_increase_percent,
             notifyPriceDecreasePercent: dbSubscription.notify_price_decrease_percent,
+            userNote: dbSubscription.user_note,
             created: dbSubscription.created,
         };
     }
@@ -107,6 +106,7 @@ export class DataConverter {
             notify_max_frequency: subscription.notifyMaxFrequency,
             notify_price_increase_percent: subscription.notifyPriceIncreasePercent,
             notify_price_decrease_percent: subscription.notifyPriceDecreasePercent,
+            user_note: subscription.userNote,
             created: subscription.created || (new Date()).toISOString(),
         };
     }

@@ -1,16 +1,16 @@
 {
-  "name": "price-tracker",
+  "name": "price-snitch",
   "version": "1.0.0",
   "description": "Headless selenium crawls product pages, keeps track of prices and notifies upon detecting significant changes",
   "main": "app.js",
   "scripts": {
     "test": "mocha --timeout 1600000 --exit ./test/**/*.spec.ts",
     "build": "tsc",
-    "start": "DEBUG=price-tracker:* ts-node ./src/app.ts"
+    "start": "DEBUG=price-snitch:* ts-node ./src/app.ts"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tka85/price-tracker.git"
+    "url": "git+https://github.com/tka85/price-snitch.git"
   },
   "keywords": [
     "Amazon",
@@ -22,9 +22,9 @@
   "author": "tka85",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/tka85/price-tracker/issues"
+    "url": "https://github.com/tka85/price-snitch/issues"
   },
-  "homepage": "https://github.com/tka85/price-tracker#readme",
+  "homepage": "https://github.com/tka85/price-snitch#readme",
   "dependencies": {
     "@tsconfig/node18": "1.0.1",
     "@types/node-fetch": "^2.6.2",
@@ -32,6 +32,8 @@
     "chromedriver": "109.0.0",
     "debug": "4.3.4",
     "knex": "2.4.2",
+    "mnemonic-id": "^3.2.7",
+    "promise-pool-js": "^1.0.2",
     "selenium-webdriver": "4.7.1",
     "sqlite3": "5.1.2",
     "typescript": "4.6.4"

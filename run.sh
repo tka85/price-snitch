@@ -1,8 +1,8 @@
 #!/bin/bash
 
-if [ "$( docker container inspect -f '{{.State.Status}}' price-tracker 2>/dev/null)" == "running" ]; then
-    docker stop price-tracker
-    docker rm price-tracker
+if [ "$( docker container inspect -f '{{.State.Status}}' price-snitch 2>/dev/null)" == "running" ]; then
+    docker stop price-snitch
+    docker rm price-snitch
 fi
 
-docker run -m 16G --name=price-tracker -v price-tracker:/opt/price-tracker/data tka85/price-tracker:latest
+docker run -m 16G --name=price-snitch -v price-snitch:/opt/price-snitch/data tka85/price-snitch:latest

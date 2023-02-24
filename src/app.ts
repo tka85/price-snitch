@@ -41,15 +41,15 @@ const logError = getErrorLogger('app');
         const matureProdIds = scheduler.getMatureProdIds();
         for (const pid of matureProdIds) {
             const product = await datastore.getProductById(pid);
-            log(`Scanning price for prod ${pid} ["${product.descr || product.url}]`);
+            log(`Scanning price for prod ${pid} ["${product.title ?? product.url}]`);
             try {
-                const price = await crawler.crawlProductPage(product);
+                const price = await crawler.crawlProductPages(product);
                 if (price) {
                     await datastore.insertPriceChange(price);
                     await notifier.sendSignificantPriceChangeNotification(product);
                 } else {
                     // Leave trace in DB that we couldn't locate price in webpage
-                    await datastore.insertInvalidPrice(pid);
+                    await datastore.insertInvalidPriceChange(pid);
                 }
             } catch (err) {
                 logError(err);
