@@ -3,7 +3,7 @@ import { ObjectFactory } from './ObjectFactory';
 import { Crawler } from './Crawler';
 import { getErrorLogger, getLogger } from './common/utils';
 import Pool from 'promise-pool-js';
-import { INVALID_PRICE_AMOUNT } from './common/types';
+import { CrawlData, INVALID_PRICE_AMOUNT } from './common/types';
 
 const log = getLogger('run-crawlers');
 const logError = getErrorLogger('run-crawlers');
@@ -13,9 +13,9 @@ const pool = new Pool({
     strategy: 'round-robin'
 });
 
-pool.on('after.each', async (discoveredData) => {
-    // console.log(`>>>>>>>>>>>>>>>>>>>> discoveredData`, discoveredData.result);
-    for (const crawlPrice of discoveredData.result) {
+pool.on('after.each', async (data) => {
+    const discoveredData: CrawlData[] = data.result;
+    for (const crawlPrice of discoveredData) {
         try {
             if (crawlPrice.amount !== INVALID_PRICE_AMOUNT) {
                 await datastore.insertPriceChange(crawlPrice);
@@ -31,11 +31,11 @@ pool.on('after.each', async (discoveredData) => {
 
 (async () => {
     while(true) {
-        log(`Starting refilling of crawlers pool...`);
+        log(`Refilling execution pool with crawlers`);
         await refillCrawlersPool();
-        log(`...crawlers pool refilled!`);
-        await pool.all(); //.then(_ => console.log('>>>>>>>>>>>>> pool.all() called!!!', _));
-        log(`All pool crawlers finished!!`);
+        log(`Pool refilled`);
+        await pool.all();
+        log(`All pool crawlers finished!`);
     }
 })()
     .catch(err => {
@@ -51,27 +51,26 @@ pool.on('after.each', async (discoveredData) => {
 
             for (let prodIndex = 0; prodIndex < allProducts.length; prodIndex++) {
                 let prodIdUrlMap: Map<number, string> = new Map();
+                // Construct crawler that will handle this batch
+                const crawler: Crawler = new Crawler({
+                    webdriverParams: config.webdriver
+                });
+                
                 // Construct batch map for next crawler
-                log(`Building batch map of ${config.crawler.productsPerCrawler} [prodId -> prodUrl]`);
+                log(`Building crawler "${crawler.name}" batch (${config.crawler.productsPerCrawler} products)`);
                 for (let i = 0; i < config.crawler.productsPerCrawler; i++) {
                     const prod = allProducts[prodIndex];
                     if (prod) {
-                        log(`\tAdding prodId ${prod.id} into batch`);
+                        log(`> Adding prodId ${prod.id} into batch`);
                         prodIdUrlMap.set(prod.id!, prod.url!);
                         prodIndex++;
                     }
                 }
                 // Cancel out last incrementing or else we skip a product
                 prodIndex--;
-
-                // Construct crawler that will handle this batch
-                const crawler: Crawler = new Crawler({
-                    webdriverParams: config.webdriver
-                });
-                
                 // Add new crawler to pool
                 try {
-                    log(`\t Adding crawler ${crawler.name} into pool; batch: ${Array.from(prodIdUrlMap)}`);
+                    log(`Scheduling crawler "${crawler.name}" (prodIds: ${[...prodIdUrlMap.keys()]}) for execution`);
                     pool.schedule(crawler.crawlProductPages.bind(crawler, {
                         shopId: shop.id!,
                         prodIdUrlMap,
