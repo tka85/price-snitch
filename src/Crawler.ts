@@ -6,9 +6,6 @@ import { CrawlerParams, CrawlPagesInput, CrawlData, INVALID_PRICE_AMOUNT } from 
 import { getLogger, getErrorLogger, clearAllStorage } from './common/utils';
 import config from '../config.json';
 
-const log = getLogger('Crawler');
-const logError = getErrorLogger('Crawler');
-
 /**
  * Common parent class of all crawler implementations. Does chromedriver setup & shutdown
  */
@@ -17,6 +14,10 @@ export class Crawler {
     private driver: WebDriver | null;
     private loadCount: number = 0;
     private seleniumGet: Function = async () => this;
+    // Exception: log functions are per crawler instance and not for entire module 
+    // because we want them bound to each instance's uniq name 
+    private log;
+    private logError;
     readonly name: string;
     readonly discoveredData: CrawlData[] = [];
 
@@ -44,6 +45,9 @@ export class Crawler {
 
         this.name = createStoryId(); // "adj+noun+verb+adj+noun", 10^12 permutations, 48 max length
         this.driver = null; // created in init()
+        this.log = getLogger(`Crawler:${this.name}`);
+        this.logError = getErrorLogger(`Crawler:${this.name}`);
+
     }
 
     // Will be called implicitly if uninitialized instance
@@ -52,7 +56,7 @@ export class Crawler {
         builder.setChromeOptions(this.chromedriverOptions);
         this.driver = await builder.forBrowser(Browser.CHROME).build();
         this.loadCount = 0;
-        log('Initializing Chromedriver...');
+        this.log('Initializing Chromedriver...');
         // override Webdriver.get()
         this.seleniumGet = this.driver.get.bind(this.driver);
         const that = this;
@@ -64,7 +68,7 @@ export class Crawler {
 
     async shutdown(): Promise<void> {
         if (this.driver) {
-            log(`Crawler "${this.name}" shutting down Chrome webdriver.`);
+            this.log(`Shutting down Chrome webdriver.`);
             await this.driver.quit();
             this.driver = null;
         }
@@ -83,13 +87,13 @@ export class Crawler {
         if (!this.driver) {
             await this.init();
         }
-        log(`Product crawler "${this.name}" assigned prodIds [${Array.from(prodIdUrlMap.keys())}]`);
+        this.log(`Crawler assigned prodIds [${Array.from(prodIdUrlMap.keys())}]`);
         for (const [prodId, url] of prodIdUrlMap) {
             this.loadCount = 0;
             let discoveredValidPrice = false;
             while (this.loadCount <= priceLocateRetries) {
                 this.loadCount++;
-                log(`Product crawler "${this.name}" attempt #${this.loadCount}/${priceLocateRetries} locating prodiId ${prodId} price at ${url}...`);
+                this.log(`Crawler attempt #${this.loadCount}/${priceLocateRetries} locating prodiId ${prodId} price at ${url}...`);
                 try {
                     await this.driver!.get(url);
                     await this.driver!.wait(until.elementLocated(By.xpath(priceXpath)), priceLocateTimeout);
@@ -106,11 +110,12 @@ export class Crawler {
                         .replace(priceDecimalSeparator, '.');
                     const amount = parseInt(amountStrNormalized, 10);
                     if (Number.isNaN(amount)) {
-                        logError(`Product crawler "${this.name}" located price text "${amountStr}" and normalized to "${amountStrNormalized}" but parsed to NaN for prod ${prodId}`);
+                        this.logError(`Crawler located price text "${amountStr}" and normalized to "${amountStrNormalized}" but parsed to NaN for prod ${prodId}`);
                         break;
                     }
-                    log(`Product crawler "${this.name}" located price string "${amountStrNormalized}" parsed as number ${amount}`);
+                    this.log(`Crawler located price string "${amountStrNormalized}" parsed as number ${amount}`);
                     this.discoveredData.push({
+                        crawlerName: this.name,
                         prodId,
                         shopId,
                         amount,
@@ -118,12 +123,13 @@ export class Crawler {
                     discoveredValidPrice = true;
                     break;
                 } catch (err) {
-                    logError(`Product crawler "${this.name}" failed attempt #${this.loadCount}/${priceLocateRetries} to locate price of prodId ${prodId}`, err);
+                    this.logError(`Crawler failed attempt #${this.loadCount}/${priceLocateRetries} to locate price of prodId ${prodId}`, err);
                 }
             }
             if (!discoveredValidPrice) {
-                logError(`Product crawler "${this.name}" overall failed to locate price of prodId ${prodId} at "${url}"`);
+                this.logError(`Crawler overall failed to locate price of prodId ${prodId} at "${url}"`);
                 this.discoveredData.push({
+                    crawlerName: this.name,
                     shopId,
                     prodId,
                     amount: INVALID_PRICE_AMOUNT
@@ -131,9 +137,9 @@ export class Crawler {
             }
         }
         if (prodIdUrlMap.size === this.discoveredData.length) {
-            log(`Product crawler "${this.name}" finished; discovered ${prodIdUrlMap.size}/${prodIdUrlMap.size} assigned prices!`);
+            this.log(`Crawler finished; discovered ${prodIdUrlMap.size}/${prodIdUrlMap.size} assigned prices!`);
         } else {
-            logError(`Product crawler "${this.name}" finished; but only discovered ${this.discoveredData.length}/${prodIdUrlMap.size} prices!`)
+            this.logError(`Crawler finished; but only discovered ${this.discoveredData.length}/${prodIdUrlMap.size} prices!`)
         }
         await this.shutdown();
         return this.discoveredData;

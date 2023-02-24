@@ -49,6 +49,7 @@ export type CrawlPagesInput = {
 };
 
 export type CrawlData = {
+    crawlerName: string;
     prodId: number;
     shopId: number;
     amount: number;
