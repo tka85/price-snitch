@@ -1,7 +1,7 @@
 import { Browser, Builder, By, until, WebDriver } from 'selenium-webdriver';
 import { Options } from 'selenium-webdriver/chrome';
 import { PageLoadStrategy } from 'selenium-webdriver/lib/capabilities';
-import { createStoryId } from 'mnemonic-id';
+import { createLongNameId } from 'mnemonic-id';
 import { CrawlerParams, CrawlPagesInput, CrawlData, INVALID_PRICE_AMOUNT } from './common/types';
 import { getLogger, getErrorLogger, clearAllStorage } from './common/utils';
 import config from '../config.json';
@@ -43,7 +43,7 @@ export class Crawler {
         this.chromedriverOptions.setPageLoadStrategy(PageLoadStrategy.EAGER);
         // this.chromedriverOptions.setPageLoadStrategy(PageLoadStrategy.NONE);
 
-        this.name = createStoryId(); // "adj+noun+verb+adj+noun", 10^12 permutations, 48 max length
+        this.name = createLongNameId(); // "adj+adj+noun", 10^6 permutations
         this.driver = null; // created in init()
         this.log = getLogger(`Crawler:${this.name}`);
         this.logError = getErrorLogger(`Crawler:${this.name}`);
