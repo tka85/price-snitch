@@ -6,7 +6,7 @@
 export class User {
     readonly moniker;
 
-    constructor(moniker?: string) {
+    constructor(moniker: string) {
         this.moniker = moniker;
     }
 }

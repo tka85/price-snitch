@@ -3,7 +3,7 @@ import { ObjectFactory } from './ObjectFactory';
 import { Crawler } from './Crawler';
 import { getErrorLogger, getLogger } from './common/utils';
 import Pool from 'promise-pool-js';
-import { CrawlData/* , INVALID_PRICE_AMOUNT */ } from './common/types';
+import { INVALID_PRICE_AMOUNT } from './common/types';
 
 const log = getLogger('run-crawlers');
 const logError = getErrorLogger('run-crawlers');
@@ -13,20 +13,20 @@ const pool = new Pool({
     strategy: 'round-robin'
 });
 
-pool.on('after.each', async (discoveredData: CrawlData[]) => {
-    console.log(`>>>>>>>>>>>>>>>>>>>> discoveredData`, discoveredData);
-    // for (const crawlPrice of discoveredData) {
-    //     try {
-    //         if (crawlPrice.amount !== INVALID_PRICE_AMOUNT) {
-    //             await datastore.insertPriceChange(crawlPrice);
-    //         } else {
-    //             // Leave trace in DB that we couldn't locate price for this prodId
-    //             await datastore.insertInvalidPriceChange({shopId: crawlPrice.shopId, prodId: crawlPrice.prodId});
-    //         }
-    //     } catch (err) {
-    //         logError(err);
-    //     }
-    // }
+pool.on('after.each', async (discoveredData) => {
+    // console.log(`>>>>>>>>>>>>>>>>>>>> discoveredData`, discoveredData.result);
+    for (const crawlPrice of discoveredData.result) {
+        try {
+            if (crawlPrice.amount !== INVALID_PRICE_AMOUNT) {
+                await datastore.insertPriceChange(crawlPrice);
+            } else {
+                // Leave trace in DB that we couldn't locate price for this prodId
+                await datastore.insertInvalidPriceChange({shopId: crawlPrice.shopId, prodId: crawlPrice.prodId});
+            }
+        } catch (err) {
+            logError(err);
+        }
+    }
 });
 
 (async () => {
@@ -69,7 +69,7 @@ pool.on('after.each', async (discoveredData: CrawlData[]) => {
                     webdriverParams: config.webdriver
                 });
                 
-                // Add crawler to pool
+                // Add new crawler to pool
                 try {
                     log(`\t Adding crawler ${crawler.name} into pool; batch: ${Array.from(prodIdUrlMap)}`);
                     pool.schedule(crawler.crawlProductPages.bind(crawler, {
