@@ -1,7 +1,7 @@
 import { evalPercentDiff, getLogger } from './common/utils';
 import knex, { Knex } from 'knex';
 import { createLongNameId } from 'mnemonic-id';
-import { CrawlData, INVALID_PRICE_CHANGE, Shop, TABLES } from './common/types';
+import { CrawlData, INVALID_PRICE_AMOUNT, INVALID_PRICE_CHANGE, Shop, TABLES } from './common/types';
 import { Converter } from './Converter';
 import { PriceChange, Notification, Product } from './common/types';
 import { User } from './User';
@@ -102,7 +102,7 @@ export class Datastore {
             if (lastKnownPrice.amount !== crawlData.amount) {
                 const fromAmount = lastKnownPrice.amount;
                 const toAmount = crawlData.amount;
-                log(`Detected price change for prod ${crawlData.prodId} from ${fromAmount} to ${toAmount}`);
+                log(`Detected price change for prodId ${crawlData.prodId} from ${fromAmount} to ${toAmount}`);
                 priceChange = {
                     prodId: crawlData.prodId,
                     shopId: crawlData.shopId,
@@ -112,17 +112,17 @@ export class Datastore {
                     percentDiff: evalPercentDiff(fromAmount, toAmount),
                     created: new Date().toISOString(),
                 };
-                log(`Adding new price change for prod ${crawlData.prodId}`, priceChange);
+                log(`Adding new price change for prodId ${crawlData.prodId}`, priceChange);
                 await this.db(TABLES.price_changes)
                     .insert(Converter.toDbPriceChange(priceChange));
             } else {
-                log(`No price change for prod ${crawlData.prodId}; retains price ${lastKnownPrice.amount}`);
+                log(`No price change for prodId ${crawlData.prodId}; retains price ${lastKnownPrice.amount}`);
             }
         }
     }
 
     async insertInvalidPriceChange({shopId, prodId}: {shopId: number, prodId: number}): Promise<void> {
-        log(`Inserting invalid price for prod ${prodId}`);
+        log(`Inserting invalid price for prodId ${prodId}`);
         const invalidPriceChange: PriceChange = Object.assign({ shopId, prodId }, INVALID_PRICE_CHANGE);
         await this.db(TABLES.price_changes)
             .insert(Converter.toDbPriceChange(invalidPriceChange))
@@ -194,6 +194,7 @@ export class Datastore {
         const result = await this.db(TABLES.price_changes)
             .select()
             .where({ prod_id: prodId })
+            .whereNot({ amount: INVALID_PRICE_AMOUNT })
             .orderBy('id', 'desc')
             .limit(1)
             .first();

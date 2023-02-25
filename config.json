@@ -2,7 +2,7 @@
     "webdriver": {
         "disableExtensions": true,
         "incognito": true,
-        "headless": true,
+        "headless": false,
         "proxyServerUrl": null
     },
     "db": "priceTracker.db",

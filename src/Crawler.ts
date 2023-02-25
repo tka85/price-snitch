@@ -2,7 +2,7 @@ import { Browser, Builder, By, until, WebDriver } from 'selenium-webdriver';
 import { Options } from 'selenium-webdriver/chrome';
 import { PageLoadStrategy } from 'selenium-webdriver/lib/capabilities';
 import { createLongNameId } from 'mnemonic-id';
-import { CrawlerParams, CrawlPagesInput, CrawlData, INVALID_PRICE_AMOUNT } from './common/types';
+import { CrawlerParams, CrawlData, INVALID_PRICE_AMOUNT } from './common/types';
 import { getLogger, getErrorLogger, clearAllStorage } from './common/utils';
 import config from '../config.json';
 
@@ -16,12 +16,21 @@ export class Crawler {
     private seleniumGet: Function = async () => this;
     // Exception: log functions are per crawler instance and not for entire module 
     // because we want them bound to each instance's uniq name 
-    private log;
-    private logError;
+    private readonly log;
+    private readonly logError;
+    private prodIdUrlMap: Map<number, string>; // prodId => prodUrl
     readonly name: string;
+    private readonly shopId: number;
+    private readonly priceLocateRetries: number;
+    private readonly priceXpath: string;
+    private readonly priceLocateTimeout: number;
+    private priceRemoveChars: RegExp | string;
+    private readonly priceThousandSeparator: string;
+    private readonly priceDecimalSeparator: string;
     readonly discoveredData: CrawlData[] = [];
 
     constructor({
+        shopParams,
         webdriverParams,
     }: CrawlerParams) {
         const finalDriverParams = Object.assign(config.webdriver, webdriverParams);
@@ -44,10 +53,17 @@ export class Crawler {
         // this.chromedriverOptions.setPageLoadStrategy(PageLoadStrategy.NONE);
 
         this.name = createLongNameId(); // "adj+adj+noun", 10^6 permutations
+        this.shopId = shopParams.id!;
+        this.priceLocateRetries = shopParams.priceLocateRetries;
+        this.priceXpath = shopParams.priceXpath;
+        this.priceLocateTimeout = shopParams.priceLocateTimeout;
+        this.priceRemoveChars = shopParams.priceRemoveChars;
+        this.priceThousandSeparator = shopParams.priceThousandSeparator;
+        this.priceDecimalSeparator = shopParams.priceDecimalSeparator;
         this.driver = null; // created in init()
         this.log = getLogger(`Crawler:${this.name}`);
         this.logError = getErrorLogger(`Crawler:${this.name}`);
-
+        this.prodIdUrlMap = new Map();
     }
 
     // Will be called implicitly if uninitialized instance
@@ -74,72 +90,72 @@ export class Crawler {
         }
     }
 
-    async crawlProductPages({
-        shopId,
-        prodIdUrlMap,
-        priceLocateRetries,
-        priceXpath,
-        priceLocateTimeout,
-        priceRemoveChars,
-        priceThousandSeparator,
-        priceDecimalSeparator
-    }: CrawlPagesInput): Promise<CrawlData[]> {
+    addProductPage(params: {prodId: number, prodUrl: string}): void {
+        this.log(`Adding prodId ${params.prodId}`);
+        this.prodIdUrlMap.set(params.prodId, params.prodUrl);
+    }
+
+    getAssignedProductPages(): Map<number, string> {
+        return this.prodIdUrlMap;
+    }
+
+    async crawlProductPages(): Promise<CrawlData[]> {
         if (!this.driver) {
             await this.init();
         }
-        this.log(`Crawler assigned prodIds [${Array.from(prodIdUrlMap.keys())}]`);
-        for (const [prodId, url] of prodIdUrlMap) {
+        this.log(`Crawler assigned prodIds [${Array.from(this.prodIdUrlMap.keys())}]`);
+        for (const [prodId, url] of this.prodIdUrlMap) {
             this.loadCount = 0;
             let discoveredValidPrice = false;
-            while (this.loadCount <= priceLocateRetries) {
+            while (this.loadCount <= this.priceLocateRetries) {
                 this.loadCount++;
-                this.log(`Crawler attempt #${this.loadCount}/${priceLocateRetries} locating prodiId ${prodId} price at ${url}...`);
+                this.log(`Crawler attempt #${this.loadCount}/${this.priceLocateRetries} locating prodiId ${prodId} price at ${url}...`);
                 try {
                     await this.driver!.get(url);
-                    await this.driver!.wait(until.elementLocated(By.xpath(priceXpath)), priceLocateTimeout);
-                    const priceElem = await this.driver!.findElement(By.xpath(priceXpath));
+                    await this.driver!.wait(until.elementLocated(By.xpath(this.priceXpath)), this.priceLocateTimeout);
+                    const priceElem = await this.driver!.findElement(By.xpath(this.priceXpath));
                     try {
                         // Try making regex from string
-                        priceRemoveChars = new RegExp(priceRemoveChars, 'g');
+                        this.priceRemoveChars = new RegExp(this.priceRemoveChars, 'g');
                     } catch (err) {
                         // Not RegExp; use as string
                     }
                     const amountStr = await priceElem.getText();
-                    const amountStrNormalized = amountStr.replace(priceRemoveChars, '')
-                        .replace(priceThousandSeparator, '')
-                        .replace(priceDecimalSeparator, '.');
+                    const amountStrNormalized = amountStr.replace(this.priceRemoveChars, '')
+                        .replace(this.priceThousandSeparator, '')
+                        .replace(this.priceDecimalSeparator, '.');
                     const amount = parseInt(amountStrNormalized, 10);
                     if (Number.isNaN(amount)) {
-                        this.logError(`Crawler located price text "${amountStr}" and normalized to "${amountStrNormalized}" but parsed to NaN for prod ${prodId}`);
+                        this.logError(`Crawler located price text "${amountStr}" and normalized to "${amountStrNormalized}" but parsed to NaN for prodId ${prodId}`);
                         break;
                     }
                     this.log(`Crawler located price string "${amountStrNormalized}" parsed as number ${amount}`);
                     this.discoveredData.push({
                         crawlerName: this.name,
                         prodId,
-                        shopId,
+                        shopId: this.shopId,
                         amount,
                     });
                     discoveredValidPrice = true;
                     break;
                 } catch (err) {
-                    this.logError(`Crawler failed attempt #${this.loadCount}/${priceLocateRetries} to locate price of prodId ${prodId}`, err);
+                    this.logError(`Crawler failed attempt #${this.loadCount}/${this.priceLocateRetries} to locate price of prodId ${prodId}`, err);
                 }
             }
             if (!discoveredValidPrice) {
                 this.logError(`Crawler overall failed to locate price of prodId ${prodId} at "${url}"`);
                 this.discoveredData.push({
                     crawlerName: this.name,
-                    shopId,
+                    shopId: this.shopId,
                     prodId,
                     amount: INVALID_PRICE_AMOUNT
                 });
             }
         }
-        if (prodIdUrlMap.size === this.discoveredData.length) {
-            this.log(`Crawler finished; discovered ${prodIdUrlMap.size}/${prodIdUrlMap.size} assigned prices!`);
+        if (this.prodIdUrlMap.size === this.discoveredData.length) {
+            this.log(`Crawler finished; discovered ${this.prodIdUrlMap.size}/${this.prodIdUrlMap.size} assigned prices!`);
         } else {
-            this.logError(`Crawler finished; but only discovered ${this.discoveredData.length}/${prodIdUrlMap.size} prices!`)
+            this.logError(`Crawler finished; but only discovered ${this.discoveredData.length}/${this.prodIdUrlMap.size} prices!`)
         }
         await this.shutdown();
         return this.discoveredData;
