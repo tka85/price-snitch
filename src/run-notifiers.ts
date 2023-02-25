@@ -7,13 +7,13 @@ const datastore = ObjectFactory.getDatastore();
 
 (async () => {
     // while (true) {
-        const lastPriceChanges = await datastore.getMostRecentPriceChanges();
-        for(const pc of lastPriceChanges) {
-            const userIdsSubscribed = await datastore.getSubscribedUserIdsByProdId(pc.prodId);
+    const lastPriceChanges = await datastore.getMostRecentPriceChanges();
+    for (const pc of lastPriceChanges) {
+        const userIdsSubscribed = await datastore.getSubscribedUserIdsByProdId(pc.prodId);
 
-            log(pc);
-            log('User id subscribed:', userIdsSubscribed)
-        }
+        log(pc);
+        log('User id subscribed:', userIdsSubscribed)
+    }
     // }
 })()
     .catch(err => {

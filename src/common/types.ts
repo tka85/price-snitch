@@ -38,16 +38,10 @@ export type CrawlerParams = {
     webdriverParams?: CrawlerWebdriverParams;
 };
 
-export type CrawlPagesInput = {
-    shopId: number;
-    prodIdUrlMap: Map<number, string>;
-    priceLocateRetries: number;
+export type CrawlProductPage = {
+    url: string;
     priceXpath: string;
-    priceLocateTimeout: number;
-    priceRemoveChars: RegExp | string;
-    priceThousandSeparator: string;
-    priceDecimalSeparator: string;
-};
+}
 
 export type CrawlData = {
     crawlerName: string;
@@ -61,7 +55,7 @@ export type CrawlData = {
 export type Shop = {
     id?: number;
     name: string;
-    priceXpath: string;
+    priceXpaths: string[]; // all the different xpath locators for price
     priceLocateTimeout: number;
     priceLocateRetries: number;
     priceCurrency: string;
@@ -74,7 +68,7 @@ export type Shop = {
 export type DbShop = {
     id?: number;
     name: string;
-    price_xpath: string;
+    price_xpaths: string; // stringified JSON array of strings; all the different xpath locators for price
     price_locate_timeout: number;
     price_locate_retries: number;
     price_currency: string;
@@ -100,6 +94,7 @@ export type Product = {
     id?: number;
     shopId: number;
     url: string;
+    priceXpath: string;
     title?: string;
     created?: string;
 };
@@ -108,6 +103,7 @@ export type DbProduct = {
     id: number;
     shop_id: number;
     url: string;
+    price_xpath: string;
     title?: string;
     created: string;
 };

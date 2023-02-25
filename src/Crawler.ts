@@ -2,7 +2,7 @@ import { Browser, Builder, By, until, WebDriver } from 'selenium-webdriver';
 import { Options } from 'selenium-webdriver/chrome';
 import { PageLoadStrategy } from 'selenium-webdriver/lib/capabilities';
 import { createLongNameId } from 'mnemonic-id';
-import { CrawlerParams, CrawlData, INVALID_PRICE_AMOUNT } from './common/types';
+import { CrawlerParams, CrawlData, INVALID_PRICE_AMOUNT, CrawlProductPage } from './common/types';
 import { getLogger, getErrorLogger, clearAllStorage } from './common/utils';
 import config from '../config.json';
 
@@ -18,11 +18,11 @@ export class Crawler {
     // because we want them bound to each instance's uniq name 
     private readonly log;
     private readonly logError;
-    private prodIdUrlMap: Map<number, string>; // prodId => prodUrl
+    private prodIdUrlMap: Map<number, CrawlProductPage>; // prodId => {prodUrl,priceXpath}
     readonly name: string;
     private readonly shopId: number;
     private readonly priceLocateRetries: number;
-    private readonly priceXpath: string;
+    private readonly priceCurrency: string;
     private readonly priceLocateTimeout: number;
     private priceRemoveChars: RegExp | string;
     private readonly priceThousandSeparator: string;
@@ -55,7 +55,7 @@ export class Crawler {
         this.name = createLongNameId(); // "adj+adj+noun", 10^6 permutations
         this.shopId = shopParams.id!;
         this.priceLocateRetries = shopParams.priceLocateRetries;
-        this.priceXpath = shopParams.priceXpath;
+        this.priceCurrency = shopParams.priceCurrency;
         this.priceLocateTimeout = shopParams.priceLocateTimeout;
         this.priceRemoveChars = shopParams.priceRemoveChars;
         this.priceThousandSeparator = shopParams.priceThousandSeparator;
@@ -90,12 +90,12 @@ export class Crawler {
         }
     }
 
-    addProductPage(params: {prodId: number, prodUrl: string}): void {
+    addProductPage(params: { prodId: number, crawlPage: CrawlProductPage }): void {
         this.log(`Adding prodId ${params.prodId}`);
-        this.prodIdUrlMap.set(params.prodId, params.prodUrl);
+        this.prodIdUrlMap.set(params.prodId, params.crawlPage);
     }
 
-    getAssignedProductPages(): Map<number, string> {
+    getAssignedProductPages(): Map<number, CrawlProductPage> {
         return this.prodIdUrlMap;
     }
 
@@ -104,7 +104,7 @@ export class Crawler {
             await this.init();
         }
         this.log(`Crawler assigned prodIds [${Array.from(this.prodIdUrlMap.keys())}]`);
-        for (const [prodId, url] of this.prodIdUrlMap) {
+        for (const [prodId, { url, priceXpath }] of this.prodIdUrlMap) {
             this.loadCount = 0;
             let discoveredValidPrice = false;
             while (this.loadCount <= this.priceLocateRetries) {
@@ -112,8 +112,8 @@ export class Crawler {
                 this.log(`Crawler attempt #${this.loadCount}/${this.priceLocateRetries} locating prodiId ${prodId} price at ${url}...`);
                 try {
                     await this.driver!.get(url);
-                    await this.driver!.wait(until.elementLocated(By.xpath(this.priceXpath)), this.priceLocateTimeout);
-                    const priceElem = await this.driver!.findElement(By.xpath(this.priceXpath));
+                    await this.driver!.wait(until.elementLocated(By.xpath(priceXpath)), this.priceLocateTimeout);
+                    const priceElem = await this.driver!.findElement(By.xpath(priceXpath));
                     try {
                         // Try making regex from string
                         this.priceRemoveChars = new RegExp(this.priceRemoveChars, 'g');
@@ -122,6 +122,7 @@ export class Crawler {
                     }
                     const amountStr = await priceElem.getText();
                     const amountStrNormalized = amountStr.replace(this.priceRemoveChars, '')
+                        .replace(this.priceCurrency, '')
                         .replace(this.priceThousandSeparator, '')
                         .replace(this.priceDecimalSeparator, '.');
                     const amount = parseInt(amountStrNormalized, 10);

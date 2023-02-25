@@ -5,7 +5,7 @@ export class Converter {
         return {
             id: dbShop.id,
             name: dbShop.name,
-            priceXpath: dbShop.price_xpath,
+            priceXpaths: JSON.parse(dbShop.price_xpaths),
             priceLocateTimeout: dbShop.price_locate_timeout,
             priceLocateRetries: dbShop.price_locate_retries,
             priceCurrency: dbShop.price_currency,
@@ -19,7 +19,7 @@ export class Converter {
     static toDbShop(shop: WithoutId<Shop>): DbShop {
         return {
             name: shop.name,
-            price_xpath: shop.priceXpath,
+            price_xpaths: JSON.stringify(shop.priceXpaths),
             price_locate_timeout: shop.priceLocateTimeout,
             price_locate_retries: shop.priceLocateRetries,
             price_currency: shop.priceCurrency,
@@ -50,6 +50,7 @@ export class Converter {
             id: dbProduct.id,
             shopId: dbProduct.shop_id,
             url: dbProduct.url,
+            priceXpath: dbProduct.price_xpath,
             title: dbProduct.title,
             created: dbProduct.created,
         };
@@ -59,6 +60,7 @@ export class Converter {
         return {
             shop_id: product.shopId,
             url: product.url,
+            price_xpath: product.priceXpath,
             title: product.title,
             created: product.created || (new Date()).toISOString(),
         };
