@@ -47,40 +47,30 @@ pool.on('after.each', async (data) => {
         for (let shopIndex = 0; shopIndex < allShops.length; shopIndex++) {
             const shop = allShops[shopIndex];
             const allProducts = await datastore.getAllProductsByShopId(shop.id!);
-            log(`Processing all products (${allProducts.length}) of shop  for shop "${shop.name}"`);
+            log(`Processing all products (${allProducts.length}) of "${shop.name}"`);
 
             for (let prodIndex = 0; prodIndex < allProducts.length; prodIndex++) {
-                let prodIdUrlMap: Map<number, string> = new Map();
                 // Construct crawler that will handle this batch
                 const crawler: Crawler = new Crawler({
-                    webdriverParams: config.webdriver
+                    shopParams: shop,
+                    webdriverParams: config.webdriver,
                 });
                 
                 // Construct batch map for next crawler
-                log(`Building crawler "${crawler.name}" batch (${config.crawler.productsPerCrawler} products)`);
+                log(`Building batch for "${crawler.name}" (${config.crawler.productsPerCrawler} products)`);
                 for (let i = 0; i < config.crawler.productsPerCrawler; i++) {
                     const prod = allProducts[prodIndex];
                     if (prod) {
-                        log(`> Adding prodId ${prod.id} into batch`);
-                        prodIdUrlMap.set(prod.id!, prod.url!);
+                        crawler.addProductPage({prodId: prod.id!, prodUrl: prod.url});
                         prodIndex++;
                     }
                 }
-                // Cancel out last incrementing or else we skip a product
+                // Cancel out last incrementing so we don't skip a product
                 prodIndex--;
-                // Add new crawler to pool
+                // Schedule it into pool for execution
                 try {
-                    log(`Scheduling crawler "${crawler.name}" (prodIds: ${[...prodIdUrlMap.keys()]}) for execution`);
-                    pool.schedule(crawler.crawlProductPages.bind(crawler, {
-                        shopId: shop.id!,
-                        prodIdUrlMap,
-                        priceLocateRetries: shop.priceLocateRetries,
-                        priceXpath: shop.priceXpath,
-                        priceLocateTimeout: shop.priceLocateTimeout,
-                        priceRemoveChars: shop.priceRemoveChars,
-                        priceThousandSeparator: shop.priceThousandSeparator,
-                        priceDecimalSeparator: shop.priceDecimalSeparator,
-                    }));
+                    log(`Scheduling crawler "${crawler.name}" (prodIds: ${[...crawler.getAssignedProductPages().keys()]}) for execution`);
+                    pool.schedule(crawler.crawlProductPages.bind(crawler));
                 } catch (err) {
                     logError(err);
                 }

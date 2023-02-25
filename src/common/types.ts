@@ -34,6 +34,7 @@ export type CrawlerWebdriverParams = {
 };
 
 export type CrawlerParams = {
+    shopParams: Shop;
     webdriverParams?: CrawlerWebdriverParams;
 };
 
