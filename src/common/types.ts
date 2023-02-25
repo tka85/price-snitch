@@ -16,8 +16,22 @@ export enum MAX_NOTIFICATION_FREQUENCY {
     weekly = 3,
 };
 
-export const INVALID_PRICE_AMOUNT = -1;
+// If a product doesn't exist when user adds it or if
+// a product becomes unavailable after it had a price we add
+// this price_change and will always cause notification about it
+export const CURRENTLY_UNAVAILABLE_PRICE_AMOUNT = 0;
+export const CURRENTLY_UNAVAILABLE_PRICE_CHANGE = {
+    amount: CURRENTLY_UNAVAILABLE_PRICE_AMOUNT,
+    prevAmount: CURRENTLY_UNAVAILABLE_PRICE_AMOUNT,
+    amountDiff: CURRENTLY_UNAVAILABLE_PRICE_AMOUNT,
+    percentDiff: CURRENTLY_UNAVAILABLE_PRICE_AMOUNT,
+    created: new Date().toISOString(),
+};
 
+// Case when we cannot locate neither the price nor "Currently unavailable"
+// We add an invalid price change; causes no notification; 
+// useful cause it leaves a trace in db so we debug specific product 
+export const INVALID_PRICE_AMOUNT = -1;
 export const INVALID_PRICE_CHANGE = {
     amount: INVALID_PRICE_AMOUNT,
     prevAmount: INVALID_PRICE_AMOUNT,
@@ -56,6 +70,8 @@ export type Shop = {
     id?: number;
     name: string;
     priceXpaths: string[]; // all the different xpath locators for price
+    productCurrentlyUnavailableText: string; // e.g. "Currently unavailable" or "Actuellement indisponible"
+    productCurrentlyUnavailableXpath: string; // xpath locator for "Currently unavailable"
     priceLocateTimeout: number;
     priceLocateRetries: number;
     priceCurrency: string;
@@ -69,6 +85,8 @@ export type DbShop = {
     id?: number;
     name: string;
     price_xpaths: string; // stringified JSON array of strings; all the different xpath locators for price
+    product_currently_unavailable_xpath: string;
+    product_currently_unavailable_text: string;
     price_locate_timeout: number;
     price_locate_retries: number;
     price_currency: string;

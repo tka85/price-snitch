@@ -1,7 +1,7 @@
 import { evalPercentDiff, getLogger } from './common/utils';
 import knex, { Knex } from 'knex';
 import { createLongNameId } from 'mnemonic-id';
-import { CrawlData, INVALID_PRICE_AMOUNT, INVALID_PRICE_CHANGE, Shop, TABLES } from './common/types';
+import { CrawlData, INVALID_PRICE_CHANGE, Shop, TABLES } from './common/types';
 import { Converter } from './Converter';
 import { PriceChange, Notification, Product } from './common/types';
 import { User } from './User';
@@ -99,6 +99,7 @@ export class Datastore {
             await this.db(TABLES.price_changes)
                 .insert(Converter.toDbPriceChange(priceChange));
         } else {
+            // This is the case as well when from "Currently unavailable" it becomes available again
             if (lastKnownPrice.amount !== crawlData.amount) {
                 const fromAmount = lastKnownPrice.amount;
                 const toAmount = crawlData.amount;
@@ -138,7 +139,7 @@ export class Datastore {
             SELECT id price_chamge_id, prod_id, shop_id, prev_amount, amount, amount_diff, percent_diff, 
                 ROW_NUMBER() OVER (PARTITION BY prod_id ORDER BY id DESC) AS rn 
             FROM price_changes 
-            WHERE amount!=-1) 
+            WHERE amount>=0) 
         WHERE rn=1;
         `);
         if (result[0]) {
@@ -164,7 +165,7 @@ export class Datastore {
         const result = await this.db(TABLES.price_changes)
             .select()
             .where({ prod_id: prodId })
-            .whereNot({ amount: INVALID_PRICE_AMOUNT })
+            .andWhere('amount', '>=', 0)
             .orderBy('id', 'desc')
             .limit(1)
             .first();

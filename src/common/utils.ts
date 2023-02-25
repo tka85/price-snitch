@@ -2,6 +2,16 @@ import Debug from 'debug';
 import { name, version } from '../../package.json';
 import { WebDriver } from "selenium-webdriver";
 
+// Fisher-Yates; in-place shuffling
+export function shuffleArray(array): void {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = array[i];
+        array[i] = array[j];
+        array[j] = temp;
+    }
+}
+
 export async function sleep(ms: number): Promise<void> {
     return await new Promise((res) => setTimeout(res, ms));
 }
@@ -35,5 +45,14 @@ export function getErrorLogger(module: string): Function {
 }
 
 export function evalPercentDiff(fromAmount: number, toAmount: number): number {
+    if (fromAmount === 0) {
+        // Means from "Currently unavailable" it now became available again therefore
+        // we return 100% so it triggers a notification regardless of notification 
+        // increase % thresholds
+        return 100;
+    }
+    // The normal case but also the case when product becomes "Currently unavailable" 
+    // where we return -100% so it triggers a notification regardless of notification
+    // decrease % thresholds
     return Math.ceil((toAmount - fromAmount) * 100 / fromAmount);
 }

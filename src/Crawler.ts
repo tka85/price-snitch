@@ -2,7 +2,7 @@ import { Browser, Builder, By, until, WebDriver } from 'selenium-webdriver';
 import { Options } from 'selenium-webdriver/chrome';
 import { PageLoadStrategy } from 'selenium-webdriver/lib/capabilities';
 import { createLongNameId } from 'mnemonic-id';
-import { CrawlerParams, CrawlData, INVALID_PRICE_AMOUNT, CrawlProductPage } from './common/types';
+import { CrawlerParams, CrawlData, INVALID_PRICE_AMOUNT, CrawlProductPage, CURRENTLY_UNAVAILABLE_PRICE_AMOUNT } from './common/types';
 import { getLogger, getErrorLogger, clearAllStorage } from './common/utils';
 import config from '../config.json';
 
@@ -18,9 +18,11 @@ export class Crawler {
     // because we want them bound to each instance's uniq name 
     private readonly log;
     private readonly logError;
-    private prodIdUrlMap: Map<number, CrawlProductPage>; // prodId => {prodUrl,priceXpath}
+    private prodIdToCrawlPageMap: Map<number, CrawlProductPage>; // prodId => {prodUrl,priceXpath}
     readonly name: string;
     private readonly shopId: number;
+    private readonly productCurrentlyUnavailableText: string;
+    private readonly productCurrentlyUnavailableXpath: string;
     private readonly priceLocateRetries: number;
     private readonly priceCurrency: string;
     private readonly priceLocateTimeout: number;
@@ -54,6 +56,8 @@ export class Crawler {
 
         this.name = createLongNameId(); // "adj+adj+noun", 10^6 permutations
         this.shopId = shopParams.id!;
+        this.productCurrentlyUnavailableXpath = shopParams.productCurrentlyUnavailableXpath;
+        this.productCurrentlyUnavailableText = shopParams.productCurrentlyUnavailableText;
         this.priceLocateRetries = shopParams.priceLocateRetries;
         this.priceCurrency = shopParams.priceCurrency;
         this.priceLocateTimeout = shopParams.priceLocateTimeout;
@@ -63,7 +67,7 @@ export class Crawler {
         this.driver = null; // created in init()
         this.log = getLogger(`Crawler:${this.name}`);
         this.logError = getErrorLogger(`Crawler:${this.name}`);
-        this.prodIdUrlMap = new Map();
+        this.prodIdToCrawlPageMap = new Map();
     }
 
     // Will be called implicitly if uninitialized instance
@@ -92,19 +96,19 @@ export class Crawler {
 
     addProductPage(params: { prodId: number, crawlPage: CrawlProductPage }): void {
         this.log(`Adding prodId ${params.prodId}`);
-        this.prodIdUrlMap.set(params.prodId, params.crawlPage);
+        this.prodIdToCrawlPageMap.set(params.prodId, params.crawlPage);
     }
 
     getAssignedProductPages(): Map<number, CrawlProductPage> {
-        return this.prodIdUrlMap;
+        return this.prodIdToCrawlPageMap;
     }
 
     async crawlProductPages(): Promise<CrawlData[]> {
         if (!this.driver) {
             await this.init();
         }
-        this.log(`Crawler assigned prodIds [${Array.from(this.prodIdUrlMap.keys())}]`);
-        for (const [prodId, { url, priceXpath }] of this.prodIdUrlMap) {
+        this.log(`Crawler assigned prodIds [${Array.from(this.prodIdToCrawlPageMap.keys())}]`);
+        for (const [prodId, { url, priceXpath }] of this.prodIdToCrawlPageMap) {
             this.loadCount = 0;
             let discoveredValidPrice = false;
             while (this.loadCount <= this.priceLocateRetries) {
@@ -130,7 +134,7 @@ export class Crawler {
                         this.logError(`Crawler located price text "${amountStr}" and normalized to "${amountStrNormalized}" but parsed to NaN for prodId ${prodId}`);
                         break;
                     }
-                    this.log(`Crawler located price string "${amountStrNormalized}" parsed as number ${amount}`);
+                    this.log(`Crawler located price ${amount} for prodId ${prodId} with xpath ${priceXpath}`);
                     this.discoveredData.push({
                         crawlerName: this.name,
                         prodId,
@@ -141,6 +145,26 @@ export class Crawler {
                     break;
                 } catch (err) {
                     this.logError(`Crawler failed attempt #${this.loadCount}/${this.priceLocateRetries} to locate price of prodId ${prodId}`, err);
+                    this.logError(`Checking for "${this.productCurrentlyUnavailableText}" with xpath ${this.productCurrentlyUnavailableXpath}`);
+                    try {
+                        const currentlyUnavailableElem = await this.driver!.findElement(By.xpath(this.productCurrentlyUnavailableXpath));
+                        const currentlyUnavailableElemText = await currentlyUnavailableElem.getText();
+                        if (currentlyUnavailableElemText.match(new RegExp(this.productCurrentlyUnavailableText))) {
+                            this.log(`Crawler located "${this.productCurrentlyUnavailableText}" for prodId ${prodId} using xpath ${this.productCurrentlyUnavailableXpath}`);
+                            this.discoveredData.push({
+                                crawlerName: this.name,
+                                prodId,
+                                shopId: this.shopId,
+                                amount: CURRENTLY_UNAVAILABLE_PRICE_AMOUNT
+                            });
+                            // 0 for unavailability is a valid price on which we can build price_change record
+                            discoveredValidPrice = true; 
+                            break;
+                        }
+                        this.logError(`Crawler found element but its text "${currentlyUnavailableElemText}" did not match "${this.productCurrentlyUnavailableText}"`);
+                    } catch(err) {
+                        this.logError(`Crawler did not find "${this.productCurrentlyUnavailableText}" element either.`, err);
+                    }
                 }
             }
             if (!discoveredValidPrice) {
@@ -153,10 +177,10 @@ export class Crawler {
                 });
             }
         }
-        if (this.prodIdUrlMap.size === this.discoveredData.length) {
-            this.log(`Crawler finished; discovered ${this.prodIdUrlMap.size}/${this.prodIdUrlMap.size} assigned prices!`);
+        if (this.prodIdToCrawlPageMap.size === this.discoveredData.length) {
+            this.log(`Crawler finished; discovered ${this.prodIdToCrawlPageMap.size}/${this.prodIdToCrawlPageMap.size} assigned prices!`);
         } else {
-            this.logError(`Crawler finished; but only discovered ${this.discoveredData.length}/${this.prodIdUrlMap.size} prices!`)
+            this.logError(`Crawler finished; but only discovered ${this.discoveredData.length}/${this.prodIdToCrawlPageMap.size} prices!`)
         }
         await this.shutdown();
         return this.discoveredData;
