@@ -121,7 +121,7 @@ export class Datastore {
         }
     }
 
-    async insertInvalidPriceChange({shopId, prodId}: {shopId: number, prodId: number}): Promise<void> {
+    async insertInvalidPriceChange({ shopId, prodId }: { shopId: number, prodId: number }): Promise<void> {
         log(`Inserting invalid price for prodId ${prodId}`);
         const invalidPriceChange: PriceChange = Object.assign({ shopId, prodId }, INVALID_PRICE_CHANGE);
         await this.db(TABLES.price_changes)
@@ -147,42 +147,12 @@ export class Datastore {
         return [];
     }
 
-    async getSubscribedUserIdsByProdId(prodId: number){
+    async getSubscribedUserIdsByProdId(prodId: number) {
         return (await this.db(TABLES.subscriptions)
             .select('user_id')
-            .where({prod_id: prodId}))
+            .where({ prod_id: prodId }))
             .map(_ => _.user_id);
     }
-
-    // async evalPriceChangeNotification({
-    //     prodId,
-    //     significantPriceIncreasePercent,
-    //     significantPriceDecreasePercent
-    // }): Promise<Notification | undefined> {
-    //     const result = await this.db.raw(`
-    //     SELECT prod_id, from_amount, to_amount, to_amount - from_amount as amount_diff, (to_amount - from_amount) * 100 / from_amount as percent_diff, created
-    //     FROM (
-    //             -- get price diff of last 2 reading
-    //             SELECT id, LAG(amount) OVER (ORDER BY id) AS from_amount, amount AS to_amount, prod_id, created
-    //             FROM (
-    //                 -- get most recent 2 prices per product
-    //                 SELECT id, amount, prod_id, created
-    //                 FROM (
-    //                     -- assign row numbers in reverse order of creation time i.e. most recent price row number = 1 etc.
-    //                     SELECT prices.*, ROW_NUMBER() OVER (ORDER BY id DESC) AS rn
-    //                     FROM ${TABLES.prices}
-    //                     WHERE prod_id=${prodId} AND amount <> ${INVALID_PRICE_AMOUNT}
-    //                     ) AS ${TABLES.prices}
-    //                 WHERE rn IN (1,2)
-    //             ) ${TABLES.prices}
-    //          ) AS ${TABLES.prices}
-    //     WHERE from_amount IS NOT NULL 
-    //         AND (percent_diff <= -${significantPriceDecreasePercent || Number.MAX_SAFE_INTEGER} 
-    //             OR percent_diff >= ${significantPriceIncreasePercent || Number.MAX_SAFE_INTEGER})`);
-    //     if (result[0]) {
-    //         return Converter.toNotification(result[0]);
-    //     }
-    // }
 
     async insertNotification(notification: Notification) {
         await this.db(TABLES.notifications)
@@ -210,13 +180,13 @@ export class Datastore {
             .select(1)
             .where({ moniker })
             .first();
-        
+
         return result ? true : false;
     }
 
     async getNewMoniker(): Promise<string> {
         let m = createLongNameId();
-        while(await this.existsMoniker(m)) {
+        while (await this.existsMoniker(m)) {
             m = createLongNameId();
         }
         return m;
@@ -225,8 +195,8 @@ export class Datastore {
     async insertNewMoniker(moniker: string): Promise<boolean> {
         try {
             await this.db(TABLES.users)
-            .insert(Converter.toDbUser(new User(moniker)));
-        } catch(err) {
+                .insert(Converter.toDbUser(new User(moniker)));
+        } catch (err) {
             return false;
         }
         return true;
