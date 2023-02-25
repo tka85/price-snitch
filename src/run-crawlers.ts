@@ -1,7 +1,7 @@
 import config from '../config.json';
 import { ObjectFactory } from './ObjectFactory';
 import { Crawler } from './Crawler';
-import { getErrorLogger, getLogger } from './common/utils';
+import { getErrorLogger, getLogger, shuffleArray } from './common/utils';
 import Pool from 'promise-pool-js';
 import { CrawlData, INVALID_PRICE_AMOUNT } from './common/types';
 
@@ -18,6 +18,7 @@ pool.on('after.each', async (data) => {
     for (const crawlPrice of discoveredData) {
         try {
             if (crawlPrice.amount !== INVALID_PRICE_AMOUNT) {
+                // Also the case if amount == CURRENTLY_UNAVAILABLE_PRICE_AMOUNT
                 await datastore.insertPriceChange(crawlPrice);
             } else {
                 // Leave trace in DB that we couldn't locate price for this prodId
@@ -47,6 +48,7 @@ async function refillCrawlersPool() {
     for (let shopIndex = 0; shopIndex < allShops.length; shopIndex++) {
         const shop = allShops[shopIndex];
         const allProducts = await datastore.getAllProductsByShopId(shop.id!);
+        shuffleArray(allProducts);
         log(`Processing all products (${allProducts.length}) of "${shop.name}"`);
 
         for (let prodIndex = 0; prodIndex < allProducts.length; prodIndex++) {

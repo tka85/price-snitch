@@ -6,6 +6,8 @@ export class Converter {
             id: dbShop.id,
             name: dbShop.name,
             priceXpaths: JSON.parse(dbShop.price_xpaths),
+            productCurrentlyUnavailableXpath: dbShop.product_currently_unavailable_xpath,
+            productCurrentlyUnavailableText: dbShop.product_currently_unavailable_text,
             priceLocateTimeout: dbShop.price_locate_timeout,
             priceLocateRetries: dbShop.price_locate_retries,
             priceCurrency: dbShop.price_currency,
@@ -20,6 +22,8 @@ export class Converter {
         return {
             name: shop.name,
             price_xpaths: JSON.stringify(shop.priceXpaths),
+            product_currently_unavailable_xpath: shop.productCurrentlyUnavailableXpath,
+            product_currently_unavailable_text: shop.productCurrentlyUnavailableText,
             price_locate_timeout: shop.priceLocateTimeout,
             price_locate_retries: shop.priceLocateRetries,
             price_currency: shop.priceCurrency,

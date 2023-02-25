@@ -2,6 +2,8 @@ CREATE TABLE IF NOT EXISTS `shops`(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR(100) NOT NULL UNIQUE,
     price_xpaths VARCHAR(2000) NOT NULL, -- JSON array of strings; all the different xpath locators for price
+    product_currently_unavailable_xpath VARCHAR(2000) NOT NULL,
+    product_currently_unavailable_text VARCHAR(2000) NOT NULL,
     price_locate_timeout INTEGER NOT NULL DEFAULT 3000,
     price_locate_retries INTEGER NOT NULL DEFAULT 3,
     price_currency VARCHAR(20) NOT NULL DEFAULT '$',
@@ -64,15 +66,16 @@ CREATE TABLE IF NOT EXISTS `notifications`(
     FOREIGN KEY (price_change_id) REFERENCES prices(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
-insert into shops(name, price_xpaths, price_currency, price_thousand_separator, price_decimal_separator, price_remove_chars) 
-    values ('amazon.fr', "[""//span[@class='a-price-whole']"",""//span[@class='a-size-base a-color-price a-color-price']""]", '€', '', ',', '\s'),
-            ('amazon.com', "[""//span[@class='a-price-whole']"",""//span[@class='a-size-base a-color-price a-color-price']""]", '$', '', '.', '\s');
+insert into shops(name, price_xpaths, price_currency, price_thousand_separator, price_decimal_separator, price_remove_chars, product_currently_unavailable_xpath, product_currently_unavailable_text) 
+    values ('amazon.fr', "[""//span[@class='a-price-whole']"",""//span[@class='a-size-base a-color-price a-color-price']""]", '€', '', ',', '\s', '//span[@class=''a-size-medium a-color-price'']', 'Actuellement indisponible');
+insert into shops(name, price_xpaths, price_currency, price_thousand_separator, price_decimal_separator, price_remove_chars, product_currently_unavailable_xpath, product_currently_unavailable_text) 
+    values ('amazon.com', "[""//span[@class='a-price-whole']"",""//span[@class='a-size-base a-color-price a-color-price']""]", '$', '', '.', '\s', '//span[@class=''a-size-medium a-color-price'']', 'Currently unavailable');
 
 insert into products(shop_id,price_xpath,url,title) values(1,'//span[@class=''a-price-whole'']','https://www.amazon.fr/gp/product/B09MMCJCNJ/','Steelcase Leap Chaise de Bureau et de Jeu Ergonomique');
 insert into products(shop_id,price_xpath,url,title) values(1,'//span[@class=''a-price-whole'']','https://www.amazon.fr/Waterpik-WP-660EU-Dentaire-Hydropulseur-Professional/dp/B073WGYSF9','Waterpik - Hydropulseur Ultra Professional, Jet Dentaire');
 insert into products(shop_id,price_xpath,url,title) values(1,'//span[@class=''a-price-whole'']','https://www.amazon.fr/Baby-Einstein-Hape-Jouet-musical/dp/B07QXL2T8Z','Baby Einstein Hape Magic Touch Tablet Jouets musicaux en bois');
 insert into products(shop_id,price_xpath,url,title) values(1,'//span[@class=''a-price-whole'']','https://www.amazon.fr/gp/product/B07BCNJV9N','Tefal Ice Force Couteau à éplucher 9 cm, Couteau de cuisine');
-insert into products(shop_id,price_xpath,url,title) values(1,'//span[@class=''a-price-whole'']','https://www.amazon.fr/gp/product/B09641TW4F','Columbia Childrens Firecamp™ Sledder 3 Wp');
+insert into products(shop_id,price_xpath,url,title) values(1,'//span[@class=''a-price-whole'']','https://www.amazon.fr/gp/product/B09641TW4F?th=1&psc=1','Columbia Childrens Firecamp™ Sledder 3 Wp');
 insert into products(shop_id,price_xpath,url,title) values(1,'//span[@class=''a-price-whole'']','https://www.amazon.fr/Villeroy-Boch-10-4600-2640-Assiette-Porcelaine/dp/B0002X801G','Villeroy & Boch Cellini Assiette petit-déjeuner, 22 cm, Porcelaine Premium, Blanc');
 insert into products(shop_id,price_xpath,url,title) values(1,'//span[@class=''a-price-whole'']','https://www.amazon.fr/Leonardo-014791-Puccini-Bourgogne-Transparent/dp/B00ZCKS500','Leonardo 014791 Puccini Set de 6 Verres Bourgogne Verre Transparent');
 insert into products(shop_id,price_xpath,url,title) values(2,'//span[@class=''a-size-base a-color-price a-color-price'']','https://www.amazon.com/Ring-Video-Doorbell-Satin-Nickel-2020-Release/dp/B08N5NQ869/','Ring Video Doorbell - 1080p HD video, improved motion detection, easy installation – Satin Nickel');
@@ -110,8 +113,8 @@ insert into notifications(user_id, price_change_id, prod_id) values(1,5,2);
     -- (user 2, pri_ch 4 for prod 2) 
 -- should not be sent, since it was missed and we already have a more recent one
 
--- get the one most recent price change of each products (only with valid amount<>-1)
-SELECT * FROM (SELECT price_changes.*,ROW_NUMBER() OVER (PARTITION BY prod_id ORDER BY id DESC) AS rn FROM price_changes WHERE amount!=-1) WHERE rn=1;
+-- get the one most recent price change of each products (only with valid amount i.e. >=0)
+SELECT * FROM (SELECT price_changes.*,ROW_NUMBER() OVER (PARTITION BY prod_id ORDER BY id DESC) AS rn FROM price_changes WHERE amount>=0) WHERE rn=1;
 
 -- get price_changes for all products
 SELECT pc.*, p.title from price_changes pc, products p where pc.prod_id=p.id order by prod_id, id;
