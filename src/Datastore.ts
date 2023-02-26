@@ -1,7 +1,7 @@
 import { evalPercentDiff, getLogger } from './common/utils';
 import knex, { Knex } from 'knex';
 import { createLongNameId } from 'mnemonic-id';
-import { CrawlData, INVALID_PRICE_CHANGE, Shop, TABLES } from './common/types';
+import { CrawlData, INVALID_PRICE_CHANGE, Shop, TABLES, UserSubscriptionNotification } from './common/types';
 import { Converter } from './Converter';
 import { PriceChange, Notification, Product } from './common/types';
 import { User } from './User';
@@ -129,6 +129,13 @@ export class Datastore {
             .insert(Converter.toDbPriceChange(invalidPriceChange))
     }
 
+    async getSubscribedUserIds(prodIds: number[]) {
+        return (await this.db(TABLES.subscriptions)
+            .select('user_id')
+            .whereIn('prod_id', prodIds))
+            .map(_ => _.user_id);
+    }
+
     /**
      * Fetches the last price change of each product
      */
@@ -136,7 +143,7 @@ export class Datastore {
         const result = await this.db.raw(`
         SELECT * 
         FROM (
-            SELECT id price_chamge_id, prod_id, shop_id, prev_amount, amount, amount_diff, percent_diff, 
+            SELECT id, prod_id, shop_id, prev_amount, amount, amount_diff, percent_diff, 
                 ROW_NUMBER() OVER (PARTITION BY prod_id ORDER BY id DESC) AS rn 
             FROM price_changes 
             WHERE amount>=0) 
@@ -148,11 +155,36 @@ export class Datastore {
         return [];
     }
 
-    async getSubscribedUserIdsByProdId(prodId: number) {
-        return (await this.db(TABLES.subscriptions)
-            .select('user_id')
-            .where({ prod_id: prodId }))
-            .map(_ => _.user_id);
+    /**
+     * NOTE: Includes user subscriptions for which no notification has been sent for each prod id
+     * @param prodIds      number[]         called with prod ids of most recent price changes (may or may have not have had notifs sent out)
+     * @returns 
+     */
+    async getMostRecentUserSubscriptionNotifications(prodIds: number[]): Promise<UserSubscriptionNotification[]> {
+        const result = await this.db.raw(`
+        SELECT user_id, prod_id, price_change_id, notify_max_frequency, 
+            notify_price_increase_percent, notify_price_decrease_percent, created --refers to notification creation
+        FROM
+            (SELECT ROW_NUMBER() OVER (
+                PARTITION BY us.user_id, us.prod_id ORDER BY n.id DESC) rn, 
+                n.created, us.user_id, n.price_change_id, us.prod_id, us.notify_max_frequency, 
+                us.notify_price_increase_percent, us.notify_price_decrease_percent, us.user_descr 
+            FROM ( 
+                SELECT user_id, prod_id, notify_max_frequency, 
+                    notify_price_increase_percent, notify_price_decrease_percent, user_descr
+                FROM users u, subscriptions s 
+                WHERE s.prod_id in (${prodIds}) 
+                    AND s.user_id=u.id) us 
+                LEFT OUTER JOIN notifications n 
+            ON
+                n.user_id=us.user_id 
+                AND us.prod_id=n.prod_id)
+        WHERE rn=1;
+        `);
+        if (result[0]) {
+            return result.map(userSubNotif => Converter.toUserSubscriptionNotification(userSubNotif));
+        }
+        return [];
     }
 
     async insertNotification(notification: Notification) {

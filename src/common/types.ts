@@ -16,6 +16,12 @@ export enum MAX_NOTIFICATION_FREQUENCY {
     weekly = 3,
 };
 
+export enum MS_IN_A {
+    halfday = 43200000,
+    day = 86400000,
+    week = 604800000
+};
+
 // If a product doesn't exist when user adds it or if
 // a product becomes unavailable after it had a price we add
 // this price_change and will always cause notification about it
@@ -175,6 +181,7 @@ export type Notification = {
     userId: number;
     priceChangeId: number;
     shopId: number;
+    version: number;
     created?: string;
 };
 
@@ -183,5 +190,25 @@ export type DbNotification = {
     user_id: number;
     price_change_id: number;
     shop_id: number;
+    version: number;
     created: string;
+};
+
+export type UserSubscriptionNotification = {
+    userId: number;
+    priceChangeId: number;
+    prodId: number;
+    notifyMaxFrequency: number;
+    notifyPriceIncreasePercent: number;
+    notifyPriceDecreasePercent: number;
+    created: string; // notification creation
+};
+export type DbUserSubscriptionNotification = {
+    user_id: number;
+    price_change_id: number;
+    prod_id: number;
+    notify_max_frequency: number;
+    notify_price_increase_percent: number;
+    notify_price_decrease_percent: number;
+    created: string;  // notification creation
 };
