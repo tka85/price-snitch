@@ -6,9 +6,10 @@
   "scripts": {
     "test": "mocha --timeout 1600000 --exit ./test/**/*.spec.ts",
     "build": "tsc",
-    "start": "DEBUG=price-snitch:* ts-node ./src/app.ts",
-    "crawlers": "DEBUG=price-snitch:* ts-node ./src/run-crawlers.ts",
-    "notifiers": "DEBUG=price-snitch:* ts-node ./src/run-notifiers.ts"
+    "crawlers": "DEBUG=price-snitch:* node ./dist/src/run-crawlers.js",
+    "notifiers": "DEBUG=price-snitch:* node ./dist/src/run-notifiers.js",
+    "ts-crawlers": "DEBUG=price-snitch:* ts-node ./src/run-crawlers.ts",
+    "ts-notifiers": "DEBUG=price-snitch:* ts-node ./src/run-notifiers.ts"
   },
   "repository": {
     "type": "git",
@@ -36,8 +37,9 @@
     "knex": "2.4.2",
     "mnemonic-id": "3.2.7",
     "promise-pool-js": "1.0.2",
-    "selenium-webdriver": "4.7.1",
+    "selenium-webdriver": "4.8.0",
     "sqlite3": "5.1.2",
+    "ts-node": "10.9.1",
     "typescript": "4.6.4"
   },
   "devDependencies": {
@@ -50,7 +52,6 @@
     "eslint": "8.7.0",
     "eslint-plugin-import": "2.25.4",
     "mocha": "10.1.0",
-    "sinon": "14.0.2",
-    "ts-node": "10.9.1"
+    "sinon": "14.0.2"
   }
 }

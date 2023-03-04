@@ -2,19 +2,21 @@
     "webdriver": {
         "disableExtensions": true,
         "incognito": true,
-        "headless": false,
-        "proxyServerUrl": null
+        "headless": true,
+        "proxyServerUrl": null,
+        "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
     },
-    "db": "priceTracker.db",
+    "db": "priceSnitch.db",
     "crawler": {
         "poolSize": 3,
-        "productsPerCrawler": 2
+        "productsPerCrawler": 2,
+        "takeScreenshots": true
     },
     "NOT_USED_defaults": {
         "priceCurrency": "€",
         "priceThousandSeparator": ".",
         "priceDecimalSeparator": ",",
-        "priceLocateTimeout": 3000,
+        "priceLocateTimeout": 6000,
         "priceLocateRetries": 3,
         "priceRemoveChars": "\\s",
         "notifyPriceIncreasePercent": 20,
