@@ -1,4 +1,4 @@
-import config from '../config.json';
+import { crawler as crawlerConfig, webdriver as webdriverConfig } from '../config.json';
 import { ObjectFactory } from './ObjectFactory';
 import { Crawler } from './Crawler';
 import { getErrorLogger, getLogger, shuffleArray } from './common/utils';
@@ -9,7 +9,7 @@ const log = getLogger('run-crawlers');
 const logError = getErrorLogger('run-crawlers');
 const datastore = ObjectFactory.getDatastore();
 const pool = new Pool({
-    size: config.crawler.poolSize,
+    size: crawlerConfig.poolSize,
     strategy: 'round-robin'
 });
 
@@ -54,13 +54,14 @@ async function refillCrawlersPool() {
         for (let prodIndex = 0; prodIndex < allProducts.length; prodIndex++) {
             // Construct crawler that will handle this batch
             const crawler: Crawler = new Crawler({
+                crawlerParams: crawlerConfig,
                 shopParams: shop,
-                webdriverParams: config.webdriver,
+                webdriverParams: webdriverConfig,
             });
 
             // Construct batch map for next crawler
-            log(`Building batch for "${crawler.name}" (${config.crawler.productsPerCrawler} products)`);
-            for (let i = 0; i < config.crawler.productsPerCrawler; i++) {
+            log(`Building batch for "${crawler.name}" (${crawlerConfig.productsPerCrawler} products)`);
+            for (let i = 0; i < crawlerConfig.productsPerCrawler; i++) {
                 const prod = allProducts[prodIndex];
                 if (prod) {
                     crawler.addProductPage({ prodId: prod.id!, crawlPage: { url: prod.url, priceXpath: prod.priceXpath } });

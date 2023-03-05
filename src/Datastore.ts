@@ -17,6 +17,15 @@ export class Datastore {
             client: 'sqlite3',
             connection: { filename },
             useNullAsDefault: true,
+            pool: {
+                afterCreate: function (conn, done) {
+                    // Use a write-ahead log instead of a rollback journal to implement transactions. 
+                    // The WAL journaling mode is persistent; after being set it stays in effect 
+                    // across multiple database connections and after closing and reopening the database. 
+                    conn.run('PRAGMA journal_mode = WAL');
+                    done();
+                }
+            },
         });
     }
 
@@ -162,15 +171,15 @@ export class Datastore {
      */
     async getMostRecentUserSubscriptionNotifications(prodIds: number[]): Promise<UserSubscriptionNotification[]> {
         const result = await this.db.raw(`
-        SELECT user_id, prod_id, price_change_id, notify_max_frequency, 
+        SELECT user_id, prod_id, price_change_id, 
             notify_price_increase_percent, notify_price_decrease_percent, created --refers to notification creation
         FROM
             (SELECT ROW_NUMBER() OVER (
                 PARTITION BY us.user_id, us.prod_id ORDER BY n.id DESC) rn, 
-                n.created, us.user_id, n.price_change_id, us.prod_id, us.notify_max_frequency, 
+                n.created, us.user_id, n.price_change_id, us.prod_id, 
                 us.notify_price_increase_percent, us.notify_price_decrease_percent, us.user_descr 
             FROM ( 
-                SELECT user_id, prod_id, notify_max_frequency, 
+                SELECT user_id, prod_id, 
                     notify_price_increase_percent, notify_price_decrease_percent, user_descr
                 FROM users u, subscriptions s 
                 WHERE s.prod_id in (${prodIds}) 

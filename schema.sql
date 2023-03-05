@@ -46,7 +46,6 @@ CREATE TABLE IF NOT EXISTS `subscriptions`(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     prod_id INTEGER NOT NULL,
-    notify_max_frequency INTEGER NOT NULL DEFAULT 0, -- one of 0=realtime (default), 1=bi-daily, 2=daily, 3=weekly
     notify_price_increase_percent INTEGER DEFAULT 10, -- null means user doesn't care about price increases
     notify_price_decrease_percent INTEGER DEFAULT 10, -- null means user doesn't care about price decreases
     user_descr varchar(500),
@@ -128,12 +127,12 @@ SELECT pc.*, p.title from price_changes pc, products p where pc.prod_id=p.id ord
 SELECT u.moniker, u.id uid, p.title, p.id pid from subscriptions s, users u, products p where s.user_id=u.id and s.prod_id=p.id;
 
 -- get the most recent notification received till now by each user for each of their product subscriptions
-SELECT notif_created, user_id, moniker, price_change_id, prod_id, notify_max_frequency, 
+SELECT notif_created, user_id, moniker, price_change_id, prod_id,  
         notify_price_increase_percent, notify_price_decrease_percent, user_descr
 FROM
     (SELECT ROW_NUMBER() OVER (
         PARTITION BY u.moniker,s.prod_id ORDER BY n.created DESC) rn, 
-        n.created notif_created, u.id user_id, u.moniker, n.price_change_id, s.prod_id, s.notify_max_frequency, 
+        n.created notif_created, u.id user_id, u.moniker, n.price_change_id, s.prod_id, 
         s.notify_price_increase_percent, s.notify_price_decrease_percent, s.user_descr 
     FROM users u, notifications n, subscriptions s
     WHERE n.user_id=u.id 

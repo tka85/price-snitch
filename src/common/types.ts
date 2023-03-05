@@ -1,5 +1,10 @@
 export type WithoutId<T> = Omit<T, 'id'>;
 
+export enum NOTIF_VERSIONS {
+    default = '1.0',
+    _1_0 = '1.0',
+}
+
 export enum TABLES {
     shops = 'shops',
     users = 'users',
@@ -7,19 +12,6 @@ export enum TABLES {
     price_changes = 'price_changes',
     subscriptions = 'subscriptions',
     notifications = 'notifications',
-};
-
-export enum MAX_NOTIFICATION_FREQUENCY {
-    realtime = 0,
-    bidaily = 1,
-    daily = 2,
-    weekly = 3,
-};
-
-export enum MS_IN_A {
-    halfday = 43200000,
-    day = 86400000,
-    week = 604800000
 };
 
 // If a product doesn't exist when user adds it or if
@@ -46,16 +38,23 @@ export const INVALID_PRICE_CHANGE = {
     created: new Date().toISOString(),
 };
 
-export type CrawlerWebdriverParams = {
+export type WebdriverConfig = {
     disableExtensions: boolean;
     incognito: boolean;
     headless: boolean;
     proxyServerUrl: string | null;
 };
 
-export type CrawlerParams = {
+export type CrawlerConfig = {
+    poolSize: number,
+    productsPerCrawler: number,
+    takeScreenshots: boolean
+};
+
+export type CrawlerCtorParams = {
+    crawlerParams: CrawlerConfig,
+    webdriverParams: WebdriverConfig;
     shopParams: Shop;
-    webdriverParams?: CrawlerWebdriverParams;
 };
 
 export type CrawlProductPage = {
@@ -158,7 +157,6 @@ export type Subscription = {
     id?: number;
     userId: number;
     prodId: number;
-    notifyMaxFrequency: MAX_NOTIFICATION_FREQUENCY;
     notifyPriceIncreasePercent?: number;
     notifyPriceDecreasePercent?: number;
     userNote?: number;
@@ -169,7 +167,6 @@ export type DbSubscription = {
     id?: number;
     user_id: number;
     prod_id: number;
-    notify_max_frequency: MAX_NOTIFICATION_FREQUENCY;
     notify_price_increase_percent?: number;
     notify_price_decrease_percent?: number;
     user_note?: number;
@@ -181,7 +178,7 @@ export type Notification = {
     userId: number;
     priceChangeId: number;
     shopId: number;
-    version: number;
+    version?: string;
     created?: string;
 };
 
@@ -190,7 +187,7 @@ export type DbNotification = {
     user_id: number;
     price_change_id: number;
     shop_id: number;
-    version: number;
+    version: string;
     created: string;
 };
 
@@ -198,7 +195,6 @@ export type UserSubscriptionNotification = {
     userId: number;
     priceChangeId: number;
     prodId: number;
-    notifyMaxFrequency: number;
     notifyPriceIncreasePercent: number;
     notifyPriceDecreasePercent: number;
     created: string; // notification creation
@@ -207,7 +203,6 @@ export type DbUserSubscriptionNotification = {
     user_id: number;
     price_change_id: number;
     prod_id: number;
-    notify_max_frequency: number;
     notify_price_increase_percent: number;
     notify_price_decrease_percent: number;
     created: string;  // notification creation

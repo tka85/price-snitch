@@ -1,4 +1,4 @@
-import { DbPriceChange, DbNotification, DbProduct, PriceChange, Notification, Product, WithoutId, DbShop, Shop, DbUser, User, DbSubscription, Subscription, DbUserSubscriptionNotification, UserSubscriptionNotification } from './common/types';
+import { DbPriceChange, DbNotification, DbProduct, PriceChange, Notification, Product, WithoutId, DbShop, Shop, DbUser, User, DbSubscription, Subscription, DbUserSubscriptionNotification, UserSubscriptionNotification, NOTIF_VERSIONS } from './common/types';
 
 export class Converter {
     static toShop(dbShop: DbShop): Shop {
@@ -99,7 +99,6 @@ export class Converter {
         return {
             userId: dbSubscription.user_id,
             prodId: dbSubscription.prod_id,
-            notifyMaxFrequency: dbSubscription.notify_max_frequency,
             notifyPriceIncreasePercent: dbSubscription.notify_price_increase_percent,
             notifyPriceDecreasePercent: dbSubscription.notify_price_decrease_percent,
             userNote: dbSubscription.user_note,
@@ -111,7 +110,6 @@ export class Converter {
         return {
             user_id: subscription.userId,
             prod_id: subscription.prodId,
-            notify_max_frequency: subscription.notifyMaxFrequency,
             notify_price_increase_percent: subscription.notifyPriceIncreasePercent,
             notify_price_decrease_percent: subscription.notifyPriceDecreasePercent,
             user_note: subscription.userNote,
@@ -133,7 +131,7 @@ export class Converter {
         return {
             user_id: notification.userId,
             price_change_id: notification.priceChangeId,
-            version: notification.version,
+            version: notification.version || NOTIF_VERSIONS.default,
             shop_id: notification.shopId,
             created: notification.created || (new Date()).toISOString(),
         };
@@ -145,7 +143,6 @@ export class Converter {
             userId: dbUserSubscriptionNotification.user_id,
             priceChangeId: dbUserSubscriptionNotification.price_change_id,
             prodId: dbUserSubscriptionNotification.prod_id,
-            notifyMaxFrequency: dbUserSubscriptionNotification.notify_max_frequency,
             notifyPriceIncreasePercent: dbUserSubscriptionNotification.notify_price_increase_percent,
             notifyPriceDecreasePercent: dbUserSubscriptionNotification.notify_price_decrease_percent,
             created: dbUserSubscriptionNotification.created, // notification creation 

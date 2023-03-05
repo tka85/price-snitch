@@ -1,10 +1,12 @@
+import { hrtime } from 'node:process';
+import fs from 'fs';
 import { Browser, Builder, By, until, WebDriver } from 'selenium-webdriver';
 import { Options } from 'selenium-webdriver/chrome';
 import { PageLoadStrategy } from 'selenium-webdriver/lib/capabilities';
 import { createLongNameId } from 'mnemonic-id';
-import { CrawlerParams, CrawlData, INVALID_PRICE_AMOUNT, CrawlProductPage, CURRENTLY_UNAVAILABLE_PRICE_AMOUNT } from './common/types';
-import { getLogger, getErrorLogger, clearAllStorage } from './common/utils';
-import config from '../config.json';
+import { CrawlerCtorParams, CrawlData, INVALID_PRICE_AMOUNT, CrawlProductPage, CURRENTLY_UNAVAILABLE_PRICE_AMOUNT } from './common/types';
+import { getLogger, getErrorLogger, clearAllStorage, hideHeadlessness } from './common/utils';
+import { webdriver as webdriverConfig } from '../config.json';
 
 /**
  * Common parent class of all crawler implementations. Does chromedriver setup & shutdown
@@ -29,30 +31,36 @@ export class Crawler {
     private priceRemoveChars: RegExp | string;
     private readonly priceThousandSeparator: string;
     private readonly priceDecimalSeparator: string;
+    private readonly takeScreenshots: boolean;
     readonly discoveredData: CrawlData[] = [];
 
     constructor({
+        crawlerParams,
         shopParams,
         webdriverParams,
-    }: CrawlerParams) {
-        const finalDriverParams = Object.assign(config.webdriver, webdriverParams);
+    }: CrawlerCtorParams) {
+        const finalDriverParams = Object.assign(webdriverConfig, webdriverParams);
         if (finalDriverParams.disableExtensions) {
             this.chromedriverOptions.addArguments('--disable-extensions');
         }
         if (finalDriverParams.incognito) {
-            this.chromedriverOptions.addArguments('incognito');
+            this.chromedriverOptions.addArguments('--incognito');
         }
         if (finalDriverParams.headless) {
-            this.chromedriverOptions.addArguments('headless');
+            // See https://www.selenium.dev/blog/2023/headless-is-going-away/
+            this.chromedriverOptions.addArguments('--headless=new');
         }
         if (finalDriverParams.proxyServerUrl) {
             this.chromedriverOptions.addArguments(`--proxy-server=${finalDriverParams.proxyServerUrl}`);
         }
-        this.chromedriverOptions.addArguments('--disable-dev-shm-usage');
+        this.chromedriverOptions.addArguments('--disable-dev-shm-usage'); // The /dev/shm partition is too small in certain VM environments, causing Chrome to fail or crash
+        this.chromedriverOptions.addArguments('--disable-gpu'); // Disables GPU hardware acceleration.
         this.chromedriverOptions.addArguments('--no-sandbox'); // Bypass OS security model
+        // override headless mode's mention of "HeadlessChrome" in the UA
+        this.chromedriverOptions.addArguments(`--user-agent=${finalDriverParams.userAgent}`);
+        this.chromedriverOptions.addArguments('--window-size=1920,1080');
         // only wait until the initial HTML document has been parsed; discards loading of css, images, and subframes
         this.chromedriverOptions.setPageLoadStrategy(PageLoadStrategy.EAGER);
-        // this.chromedriverOptions.setPageLoadStrategy(PageLoadStrategy.NONE);
 
         this.name = createLongNameId(); // "adj+adj+noun", 10^6 permutations
         this.shopId = shopParams.id!;
@@ -68,6 +76,17 @@ export class Crawler {
         this.log = getLogger(`Crawler:${this.name}`);
         this.logError = getErrorLogger(`Crawler:${this.name}`);
         this.prodIdToCrawlPageMap = new Map();
+        this.takeScreenshots = crawlerParams.takeScreenshots; // for seeing what happened on errors in headless mode
+    }
+
+    private async takeScreenshot(prodId: number): Promise<void> {
+        if (this.takeScreenshots) {
+            const screenshotFile = `/tmp/selenium-screenshot-PRODID_${prodId}-${hrtime.bigint()}.png`;
+            const imgData = await this.driver!.takeScreenshot();
+            const base64Data = imgData.replace(/^data:image\/png;base64,/, "");
+            fs.writeFileSync(screenshotFile, base64Data, 'base64');
+            this.log(`Saved screenshot ${screenshotFile}`);
+        }
     }
 
     // Will be called implicitly if uninitialized instance
@@ -83,7 +102,7 @@ export class Crawler {
         this.driver.get = async (url: string): Promise<void> => {
             await that.seleniumGet(url);
         };
-        clearAllStorage(this.driver);
+        await hideHeadlessness(this.driver);
     }
 
     async shutdown(): Promise<void> {
@@ -116,6 +135,7 @@ export class Crawler {
                 this.log(`Crawler attempt #${this.loadCount}/${this.priceLocateRetries} locating prodiId ${prodId} price at ${url}...`);
                 try {
                     await this.driver!.get(url);
+                    await clearAllStorage(this.driver!); // cannot do this earlier; need a page loaded
                     await this.driver!.wait(until.elementLocated(By.xpath(priceXpath)), this.priceLocateTimeout);
                     const priceElem = await this.driver!.findElement(By.xpath(priceXpath));
                     try {
@@ -132,9 +152,11 @@ export class Crawler {
                     const amount = parseInt(amountStrNormalized, 10);
                     if (Number.isNaN(amount)) {
                         this.logError(`Crawler located price text "${amountStr}" and normalized to "${amountStrNormalized}" but parsed to NaN for prodId ${prodId}`);
+                        await this.takeScreenshot(prodId);
                         break;
                     }
                     this.log(`Crawler located price ${amount} for prodId ${prodId} with xpath ${priceXpath}`);
+                    // TODO: check if this price means there is a price-change and take a screenshot while we're on the page (debug suspicious price changes)
                     this.discoveredData.push({
                         crawlerName: this.name,
                         prodId,
@@ -145,12 +167,14 @@ export class Crawler {
                     break;
                 } catch (err) {
                     this.logError(`Crawler failed attempt #${this.loadCount}/${this.priceLocateRetries} to locate price of prodId ${prodId}`, err);
+                    await this.takeScreenshot(prodId);
                     this.logError(`Checking for "${this.productCurrentlyUnavailableText}" with xpath ${this.productCurrentlyUnavailableXpath}`);
                     try {
                         const currentlyUnavailableElem = await this.driver!.findElement(By.xpath(this.productCurrentlyUnavailableXpath));
                         const currentlyUnavailableElemText = await currentlyUnavailableElem.getText();
                         if (currentlyUnavailableElemText.match(new RegExp(this.productCurrentlyUnavailableText))) {
                             this.log(`Crawler located "${this.productCurrentlyUnavailableText}" for prodId ${prodId} using xpath ${this.productCurrentlyUnavailableXpath}`);
+                            // TODO: check if this price means there is a price-change and take a screenshot while we're on the page (debug suspicious price changes)
                             this.discoveredData.push({
                                 crawlerName: this.name,
                                 prodId,
@@ -158,11 +182,11 @@ export class Crawler {
                                 amount: CURRENTLY_UNAVAILABLE_PRICE_AMOUNT
                             });
                             // 0 for unavailability is a valid price on which we can build price_change record
-                            discoveredValidPrice = true; 
+                            discoveredValidPrice = true;
                             break;
                         }
                         this.logError(`Crawler found element but its text "${currentlyUnavailableElemText}" did not match "${this.productCurrentlyUnavailableText}"`);
-                    } catch(err) {
+                    } catch (err) {
                         this.logError(`Crawler did not find "${this.productCurrentlyUnavailableText}" element either.`, err);
                     }
                 }

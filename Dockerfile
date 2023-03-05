@@ -3,21 +3,18 @@ FROM node:18-slim
 RUN apt-get autoclean && \
     apt-get autoremove && \
     apt-get update && \
-    apt-get install -y curl jq sqlite3 gnupg
+    apt-get install -y curl jq sqlite3 gnupg vim procps net-tools
 
 WORKDIR /opt/price-snitch
 
-COPY package*.json config.json schema.sql ./
+COPY --chown=node:node . .
+RUN mv /opt/price-snitch/.sqliterc /home/node/
 
-RUN npm install && \
-    ln -s /opt/price-snitch/node_modules/.bin/chromedriver /usr/local/bin && \
-    mkdir /opt/price-snitch/data && \
-    cat ./schema.sql | sqlite3 /opt/price-snitch/data/`jq -r .db ./config.json`
-
-COPY . .
-
+RUN npm ci --only=production && \
+    ln -s /opt/price-snitch/node_modules/.bin/chromedriver /usr/local/bin
+# mkdir /opt/price-snitch/data && \
+# cat ./schema.sql | sqlite3 /opt/price-snitch/`jq -r .db ./config.json`
 RUN npm run build
-# RUN npm ci --only=production
 
 # Install google chrome
 RUN curl -o - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
@@ -25,6 +22,9 @@ RUN sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable 
 RUN apt-get update && \
     apt-get install -y google-chrome-stable
 
-# RUN echo $(google-chrome-stable --version)
+# Check chromedriver package version is compatible with installed google-chrome version
+RUN ./check-chromedriver-version.sh
 
-CMD [ "node", "dist/src/app.js" ]
+USER node
+
+# CMD [ "tail", "-f", "/dev/null" ]
