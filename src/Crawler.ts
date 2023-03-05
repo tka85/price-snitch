@@ -44,7 +44,7 @@ export class Crawler {
             this.chromedriverOptions.addArguments('--disable-extensions');
         }
         if (finalDriverParams.incognito) {
-            this.chromedriverOptions.addArguments('incognito');
+            this.chromedriverOptions.addArguments('--incognito');
         }
         if (finalDriverParams.headless) {
             // See https://www.selenium.dev/blog/2023/headless-is-going-away/
@@ -53,10 +53,12 @@ export class Crawler {
         if (finalDriverParams.proxyServerUrl) {
             this.chromedriverOptions.addArguments(`--proxy-server=${finalDriverParams.proxyServerUrl}`);
         }
-        this.chromedriverOptions.addArguments('--disable-dev-shm-usage');
+        this.chromedriverOptions.addArguments('--disable-dev-shm-usage'); // The /dev/shm partition is too small in certain VM environments, causing Chrome to fail or crash
+        this.chromedriverOptions.addArguments('--disable-gpu'); // Disables GPU hardware acceleration.
         this.chromedriverOptions.addArguments('--no-sandbox'); // Bypass OS security model
         // override headless mode's mention of "HeadlessChrome" in the UA
         this.chromedriverOptions.addArguments(`--user-agent=${finalDriverParams.userAgent}`);
+        this.chromedriverOptions.addArguments('--window-size=1920,1080');
         // only wait until the initial HTML document has been parsed; discards loading of css, images, and subframes
         this.chromedriverOptions.setPageLoadStrategy(PageLoadStrategy.EAGER);
 
@@ -154,6 +156,7 @@ export class Crawler {
                         break;
                     }
                     this.log(`Crawler located price ${amount} for prodId ${prodId} with xpath ${priceXpath}`);
+                    // TODO: check if this price means there is a price-change and take a screenshot while we're on the page (debug suspicious price changes)
                     this.discoveredData.push({
                         crawlerName: this.name,
                         prodId,
@@ -171,6 +174,7 @@ export class Crawler {
                         const currentlyUnavailableElemText = await currentlyUnavailableElem.getText();
                         if (currentlyUnavailableElemText.match(new RegExp(this.productCurrentlyUnavailableText))) {
                             this.log(`Crawler located "${this.productCurrentlyUnavailableText}" for prodId ${prodId} using xpath ${this.productCurrentlyUnavailableXpath}`);
+                            // TODO: check if this price means there is a price-change and take a screenshot while we're on the page (debug suspicious price changes)
                             this.discoveredData.push({
                                 crawlerName: this.name,
                                 prodId,
