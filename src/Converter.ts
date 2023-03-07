@@ -124,6 +124,7 @@ export class Converter {
             prodId: dbNotification.prod_id,
             shopId: dbNotification.shop_id,
             version: dbNotification.version,
+            sendError: dbNotification.send_error || undefined,
             created: dbNotification.created,
         };
     }
@@ -135,6 +136,7 @@ export class Converter {
             prod_id: notification.prodId,
             shop_id: notification.shopId,
             version: notification.version || NOTIF_VERSIONS.default,
+            send_error: notification.sendError || undefined,
             created: notification.created || (new Date()).toISOString(),
         };
     }

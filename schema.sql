@@ -1,3 +1,5 @@
+PRAGMA journal_mode = WAL;
+
 CREATE TABLE IF NOT EXISTS `shops`(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR(100) NOT NULL UNIQUE,
@@ -48,7 +50,7 @@ CREATE TABLE IF NOT EXISTS `subscriptions`(
     prod_id INTEGER NOT NULL,
     notify_price_increase_percent INTEGER DEFAULT 10, -- null means user doesn't care about price increases
     notify_price_decrease_percent INTEGER DEFAULT 10, -- null means user doesn't care about price decreases
-    user_descr varchar(500),
+    user_descr VARCHAR(500),
     created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (user_id, prod_id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -62,6 +64,7 @@ CREATE TABLE IF NOT EXISTS `notifications`(
     prod_id INTEGER NOT NULL, -- extra
     shop_id INTEGER NOT NULL, -- extra
     version INTEGER NOT NULL DEFAULT 1,
+    send_error VARCHAR(2000),
     created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (user_id, price_change_id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
