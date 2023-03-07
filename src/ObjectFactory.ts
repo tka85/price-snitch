@@ -1,7 +1,6 @@
 import { Datastore } from './Datastore';
 import { Validator } from './Validator';
 import config from '../config.json';
-// import { Notifier } from './Notifier';
 
 class ObjectFactorySingleton {
     private static instance: ObjectFactorySingleton;
@@ -32,13 +31,6 @@ class ObjectFactorySingleton {
         }
         return this.validator;
     }
-
-    // getNotifier(): Notifier {
-    //     if (!this.notifier) {
-    //         this.notifier = new Notifier();
-    //     }
-    //     return this.notifier;
-    // }
 }
 
 export const ObjectFactory = ObjectFactorySingleton.Instance;

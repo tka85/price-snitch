@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS `notifications`(
     user_id INTEGER NOT NULL,
     price_change_id INTEGER NOT NULL, -- extra
     prod_id INTEGER NOT NULL, -- extra
+    shop_id INTEGER NOT NULL, -- extra
     version INTEGER NOT NULL DEFAULT 1,
     created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (user_id, price_change_id),
@@ -68,7 +69,7 @@ CREATE TABLE IF NOT EXISTS `notifications`(
 );
 
 insert into shops(name, price_xpaths, price_currency, price_thousand_separator, price_decimal_separator, price_remove_chars, product_currently_unavailable_xpath, product_currently_unavailable_text, created) 
-    values ('amazon.fr', "[""//span[@class='a-price-whole']"",""//span[@class='a-size-base a-color-price a-color-price']""]", '€', '', ',', '\s', '//span[@class=''a-size-medium a-color-price'']', 'Actuellement indisponible',strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+    values ('amazon.fr', "[""//span[@class='a-price-whole']"",""//span[@class='a-size-base a-color-price a-color-price']""]", '€', '', ',', '\s', '//span[@class=''a-size-medium a-color-price'']', 'Temporairement en rupture de stock',strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
 insert into shops(name, price_xpaths, price_currency, price_thousand_separator, price_decimal_separator, price_remove_chars, product_currently_unavailable_xpath, product_currently_unavailable_text, created) 
     values ('amazon.com', "[""//span[@class='a-price-whole']"",""//span[@class='a-size-base a-color-price a-color-price']""]", '$', '', '.', '\s', '//span[@class=''a-size-medium a-color-price'']', 'Currently unavailable',strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
 
@@ -104,10 +105,10 @@ insert into price_changes(prod_id,prev_amount,amount,amount_diff,percent_diff,sh
 -- Upon subscription to a product, we create a price_change reconrd but we do not send a notification since user 
 -- obviously knows the price. This is why for example the first notification for user 1 subscribed to product 1 
 -- is not price_change 1 (creation) but always price_change 2
-insert into notifications(user_id, price_change_id, prod_id, created) values(1,2,1,strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
-insert into notifications(user_id, price_change_id, prod_id, created) values(2,2,1,strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
-insert into notifications(user_id, price_change_id, prod_id, created) values(1,4,2,strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
-insert into notifications(user_id, price_change_id, prod_id, created) values(1,5,2,strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+insert into notifications(user_id, price_change_id, prod_id, shop_id, created) values(1,2,1,1,strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+insert into notifications(user_id, price_change_id, prod_id, shop_id, created) values(2,2,1,1,strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+insert into notifications(user_id, price_change_id, prod_id, shop_id, created) values(1,4,2,1,strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+insert into notifications(user_id, price_change_id, prod_id, shop_id, created) values(1,5,2,1,strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
 -- NEXT RUN notifications: 
     -- (user 1, pri_ch 6 for prod 1) 
     -- (user 2, pri_ch 6 for prod 1) and

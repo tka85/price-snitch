@@ -1,4 +1,3 @@
-import { hrtime } from 'node:process';
 import fs from 'fs';
 import { Browser, Builder, By, until, WebDriver } from 'selenium-webdriver';
 import { Options } from 'selenium-webdriver/chrome';
@@ -7,6 +6,9 @@ import { createLongNameId } from 'mnemonic-id';
 import { CrawlerCtorParams, CrawlData, INVALID_PRICE_AMOUNT, CrawlProductPage, CURRENTLY_UNAVAILABLE_PRICE_AMOUNT } from './common/types';
 import { getLogger, getErrorLogger, clearAllStorage, hideHeadlessness } from './common/utils';
 import { webdriver as webdriverConfig } from '../config.json';
+import { ObjectFactory } from './ObjectFactory';
+
+const datastore = ObjectFactory.getDatastore();
 
 /**
  * Common parent class of all crawler implementations. Does chromedriver setup & shutdown
@@ -32,6 +34,7 @@ export class Crawler {
     private readonly priceThousandSeparator: string;
     private readonly priceDecimalSeparator: string;
     private readonly takeScreenshots: boolean;
+    private readonly screenshotLocation: string;
     readonly discoveredData: CrawlData[] = [];
 
     constructor({
@@ -62,7 +65,7 @@ export class Crawler {
         // only wait until the initial HTML document has been parsed; discards loading of css, images, and subframes
         this.chromedriverOptions.setPageLoadStrategy(PageLoadStrategy.EAGER);
 
-        this.name = createLongNameId(); // "adj+adj+noun", 10^6 permutations
+        this.name = `crawler--${createLongNameId()}`; // "CRLR-adj+adj+noun", 10^6 permutations
         this.shopId = shopParams.id!;
         this.productCurrentlyUnavailableXpath = shopParams.productCurrentlyUnavailableXpath;
         this.productCurrentlyUnavailableText = shopParams.productCurrentlyUnavailableText;
@@ -77,11 +80,13 @@ export class Crawler {
         this.logError = getErrorLogger(`Crawler:${this.name}`);
         this.prodIdToCrawlPageMap = new Map();
         this.takeScreenshots = crawlerParams.takeScreenshots; // for seeing what happened on errors in headless mode
+        this.screenshotLocation = crawlerParams.screenshotLocation || '';
     }
 
     private async takeScreenshot(prodId: number): Promise<void> {
+        // TODO: occassionally purge from disk the old screenshots
         if (this.takeScreenshots) {
-            const screenshotFile = `/tmp/selenium-screenshot-PRODID_${prodId}-${hrtime.bigint()}.png`;
+            const screenshotFile = `${this.screenshotLocation}/selenium-screenshot-PRODID_${prodId}-${(new Date()).toISOString()}.png`;
             const imgData = await this.driver!.takeScreenshot();
             const base64Data = imgData.replace(/^data:image\/png;base64,/, "");
             fs.writeFileSync(screenshotFile, base64Data, 'base64');
@@ -156,7 +161,7 @@ export class Crawler {
                         break;
                     }
                     this.log(`Crawler located price ${amount} for prodId ${prodId} with xpath ${priceXpath}`);
-                    // TODO: check if this price means there is a price-change and take a screenshot while we're on the page (debug suspicious price changes)
+                    await this.takeScreenshotIfPriceChanged(prodId, amount);
                     this.discoveredData.push({
                         crawlerName: this.name,
                         prodId,
@@ -174,7 +179,7 @@ export class Crawler {
                         const currentlyUnavailableElemText = await currentlyUnavailableElem.getText();
                         if (currentlyUnavailableElemText.match(new RegExp(this.productCurrentlyUnavailableText))) {
                             this.log(`Crawler located "${this.productCurrentlyUnavailableText}" for prodId ${prodId} using xpath ${this.productCurrentlyUnavailableXpath}`);
-                            // TODO: check if this price means there is a price-change and take a screenshot while we're on the page (debug suspicious price changes)
+                            await this.takeScreenshotIfPriceChanged(prodId, CURRENTLY_UNAVAILABLE_PRICE_AMOUNT);
                             this.discoveredData.push({
                                 crawlerName: this.name,
                                 prodId,
@@ -208,5 +213,11 @@ export class Crawler {
         }
         await this.shutdown();
         return this.discoveredData;
+    }
+
+    private async takeScreenshotIfPriceChanged(prodId: number, amount: number): Promise<void> {
+        if (this.takeScreenshot && (await datastore.getLastKnownPrice(prodId)) !== amount) {
+            await this.takeScreenshot(prodId);
+        }
     }
 }

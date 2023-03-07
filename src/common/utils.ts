@@ -3,7 +3,7 @@ import { name, version } from '../../package.json';
 import { WebDriver } from "selenium-webdriver";
 
 const log = getLogger('utils');
-// const logError = getErrorLogger('run-notifiers');
+// const logError = getErrorLogger('utils');
 
 // Fisher-Yates; in-place shuffling
 export function shuffleArray(array): void {
