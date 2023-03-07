@@ -13,6 +13,9 @@
         "takeScreenshots": true,
         "screenshotLocation": "/tmp/screenshots/"
     },
+    "ntfy": {
+        "server": "http://ntfy:8080"
+    },
     "NOT_USED_defaults": {
         "priceCurrency": "€",
         "priceThousandSeparator": ".",

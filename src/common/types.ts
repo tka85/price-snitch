@@ -180,6 +180,7 @@ export type Notification = {
     priceChangeId: number;
     prodId: number;
     shopId: number;
+    sendError?: string;
     version?: string;
     created?: string;
 };
@@ -190,6 +191,7 @@ export type DbNotification = {
     price_change_id: number;
     prod_id: number;
     shop_id: number;
+    send_error?: string;
     version: string;
     created: string;
 };

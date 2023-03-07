@@ -1,21 +1,19 @@
 version: "3.8"
 
 services:
-  # ntfy:
-  #   image: binwiederhier/ntfy
-  #   container_name: ntfy
-  #   command:
-  #     - serve
-  #   environment:
-  #     - TZ=UTC # optional: set desired timezone
-  #   user: 1001:1001 # optional: replace with your own user/group or uid/gid
-  #   volumes:
-  #     - ./ntfy/cache:/var/cache/ntfy
-  #     - ./ntfy/config:/etc/ntfy
-  #     - ./ntfy/attachments:/var/cache/attachments
-  #   ports:
-  #     - 8080:8080
-  #   restart: unless-stopped
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    container_name: ntfy
+    command:
+      - serve
+    environment:
+      - TZ=UTC # optional: set desired timezone
+    user: "1000:1000"
+    volumes:
+      - ./ntfy/cache:/var/cache/ntfy
+      - ./ntfy/config:/etc/ntfy
+      - ./ntfy/attachments:/var/cache/attachments
+    restart: unless-stopped
 
   crawlers:
     build: .
@@ -24,7 +22,7 @@ services:
     <<:
       &shared
       image: tka85/price-snitch
-      user: 1000:1000
+      user: "1000:1000"
       environment:
         - DEBUG=price-snitch:*
       volumes:
@@ -32,7 +30,7 @@ services:
         - ./priceSnitch.db-shm:/opt/price-snitch/priceSnitch.db-shm
         - ./priceSnitch.db-wal:/opt/price-snitch/priceSnitch.db-wal
         - ./config.json:/opt/price-snitch/config.json
-      restart: always
+      restart: unless-stopped
 
   notifiers:
     depends_on:

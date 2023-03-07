@@ -1,12 +1,12 @@
+import { ntfy as ntfyConfig } from '../config.json';
 import fetch from 'node-fetch';
-import {/*  NOTIF_VERSIONS,  */Notification, PriceChange, UserSubscriptionNotification } from './common/types';
+import { Notification, PriceChange, UserSubscriptionNotification } from './common/types';
 import { getErrorLogger, getLogger, sleep } from './common/utils';
 import { ObjectFactory } from './ObjectFactory';
 
 const log = getLogger('run-notifiers');
 const logError = getErrorLogger('run-notifiers');
 const datastore = ObjectFactory.getDatastore();
-const NTFY_SERVER = 'http://pihole.lan:8080/';
 
 function shouldSendNotification(priceChange: PriceChange, userSubNotif: UserSubscriptionNotification): boolean {
     if (priceChange.prodId === userSubNotif.prodId &&
@@ -21,8 +21,8 @@ function shouldSendNotification(priceChange: PriceChange, userSubNotif: UserSubs
 }
 
 async function postNtfyService(moniker: string, notification: Notification): Promise<void> {
-    const endpoint = `${NTFY_SERVER}${moniker}`;
-    log(`Sending price change notification to ntfy service ${endpoint}`);
+    const endpoint = `${ntfyConfig.server}/${moniker}`;
+    log(`Sending to "${endpoint}" notification:\n`, JSON.stringify(notification, null, 4));
     await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -42,20 +42,21 @@ async function postNtfyService(moniker: string, notification: Notification): Pro
         const latestUserSubNotifs = await datastore.getMostRecentUserSubscriptionNotifications(changedProdIds);
         for (const pc of latestPriceChanges) {
             for (const usn of latestUserSubNotifs) {
-                try {
-                    if (shouldSendNotification(pc, usn)) {
-                        log(`>>> Send notification to user ${usn.userId} priceChange ${pc.id} for product ${usn.prodId} of shop ${pc.shopId}`);
-                        const notif: Notification = {
-                            userId: usn.userId,
-                            priceChangeId: pc.id!,
-                            prodId: pc.prodId,
-                            shopId: pc.shopId,
-                        };
+                if (shouldSendNotification(pc, usn)) {
+                    let notif: Notification = {
+                        userId: usn.userId,
+                        priceChangeId: pc.id!,
+                        prodId: pc.prodId,
+                        shopId: pc.shopId,
+                    };
+                    try {
                         await postNtfyService(usn.moniker, notif);
+                    } catch (err) {
+                        logError(`Failed sending or saving notification`, err);
+                        notif.sendError = JSON.stringify(err);
+                    } finally {
                         await datastore.insertNotification(notif);
                     }
-                } catch (err) {
-                    logError(`Failed sending or saving notification`, err);
                 }
             }
         }

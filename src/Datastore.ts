@@ -93,7 +93,7 @@ export class Datastore {
     async insertPriceChange(crawlData: CrawlData): Promise<void> {
         const lastKnownPrice = await this.getLastKnownPrice(crawlData.prodId);
         let priceChange: PriceChange;
-        if (!lastKnownPrice) {
+        if (lastKnownPrice === undefined) {
             log(`No previous prices; adding first price:`, crawlData);
             priceChange = {
                 prodId: crawlData.prodId,
@@ -198,7 +198,6 @@ export class Datastore {
     async insertNotification(notification: Notification) {
         await this.db(TABLES.notifications)
             .insert(Converter.toDbNotification(notification));
-        log(`Sent notification to user ${notification.userId} for price change ${notification.priceChangeId}`);
     }
 
     async getLastKnownPrice(prodId: number): Promise<number | undefined> {
