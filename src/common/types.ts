@@ -46,9 +46,10 @@ export type WebdriverConfig = {
 };
 
 export type CrawlerConfig = {
-    poolSize: number,
-    productsPerCrawler: number,
-    takeScreenshots: boolean
+    poolSize: number;
+    productsPerCrawler: number;
+    takeScreenshots: boolean;
+    screenshotLocation: string;
 };
 
 export type CrawlerCtorParams = {
@@ -177,6 +178,7 @@ export type Notification = {
     id?: number;
     userId: number;
     priceChangeId: number;
+    prodId: number;
     shopId: number;
     version?: string;
     created?: string;
@@ -186,6 +188,7 @@ export type DbNotification = {
     id?: number;
     user_id: number;
     price_change_id: number;
+    prod_id: number;
     shop_id: number;
     version: string;
     created: string;
@@ -193,14 +196,17 @@ export type DbNotification = {
 
 export type UserSubscriptionNotification = {
     userId: number;
+    moniker: string;
     priceChangeId: number;
     prodId: number;
     notifyPriceIncreasePercent: number;
     notifyPriceDecreasePercent: number;
     created: string; // notification creation
 };
+
 export type DbUserSubscriptionNotification = {
     user_id: number;
+    moniker: string;
     price_change_id: number;
     prod_id: number;
     notify_price_increase_percent: number;

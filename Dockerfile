@@ -11,7 +11,9 @@ COPY --chown=node:node . .
 RUN mv /opt/price-snitch/.sqliterc /home/node/
 
 RUN npm ci --only=production && \
-    ln -s /opt/price-snitch/node_modules/.bin/chromedriver /usr/local/bin
+    ln -s /opt/price-snitch/node_modules/.bin/chromedriver /usr/local/bin && \
+    mkdir /tmp/screenshots/ && \
+    chown node:node /tmp/screenshots/
 # mkdir /opt/price-snitch/data && \
 # cat ./schema.sql | sqlite3 /opt/price-snitch/`jq -r .db ./config.json`
 RUN npm run build

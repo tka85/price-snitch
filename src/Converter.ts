@@ -121,6 +121,7 @@ export class Converter {
         return {
             userId: dbNotification.user_id,
             priceChangeId: dbNotification.price_change_id,
+            prodId: dbNotification.prod_id,
             shopId: dbNotification.shop_id,
             version: dbNotification.version,
             created: dbNotification.created,
@@ -131,8 +132,9 @@ export class Converter {
         return {
             user_id: notification.userId,
             price_change_id: notification.priceChangeId,
-            version: notification.version || NOTIF_VERSIONS.default,
+            prod_id: notification.prodId,
             shop_id: notification.shopId,
+            version: notification.version || NOTIF_VERSIONS.default,
             created: notification.created || (new Date()).toISOString(),
         };
     }
@@ -141,6 +143,7 @@ export class Converter {
         return {
             // See Datastore.getMostRecentNotifications() for fields returned
             userId: dbUserSubscriptionNotification.user_id,
+            moniker: dbUserSubscriptionNotification.moniker,
             priceChangeId: dbUserSubscriptionNotification.price_change_id,
             prodId: dbUserSubscriptionNotification.prod_id,
             notifyPriceIncreasePercent: dbUserSubscriptionNotification.notify_price_increase_percent,

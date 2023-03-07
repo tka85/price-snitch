@@ -1,9 +1,8 @@
 import { evalPercentDiff, getLogger } from './common/utils';
 import knex, { Knex } from 'knex';
 import { createLongNameId } from 'mnemonic-id';
-import { CrawlData, INVALID_PRICE_CHANGE, Shop, TABLES, UserSubscriptionNotification } from './common/types';
+import { PriceChange, Notification, Product, CrawlData, INVALID_PRICE_CHANGE, Shop, TABLES, UserSubscriptionNotification } from './common/types';
 import { Converter } from './Converter';
-import { PriceChange, Notification, Product } from './common/types';
 import { User } from './User';
 
 const log = getLogger('Datastore');
@@ -109,16 +108,16 @@ export class Datastore {
                 .insert(Converter.toDbPriceChange(priceChange));
         } else {
             // This is the case as well when from "Currently unavailable" it becomes available again
-            if (lastKnownPrice.amount !== crawlData.amount) {
-                const fromAmount = lastKnownPrice.amount;
+            if (lastKnownPrice !== crawlData.amount) {
+                const fromAmount = lastKnownPrice;
                 const toAmount = crawlData.amount;
                 log(`Detected price change for prodId ${crawlData.prodId} from ${fromAmount} to ${toAmount}`);
                 priceChange = {
                     prodId: crawlData.prodId,
                     shopId: crawlData.shopId,
                     amount: crawlData.amount,
-                    prevAmount: lastKnownPrice.amount,
-                    amountDiff: crawlData.amount - lastKnownPrice.amount,
+                    prevAmount: lastKnownPrice,
+                    amountDiff: crawlData.amount - lastKnownPrice,
                     percentDiff: evalPercentDiff(fromAmount, toAmount),
                     created: new Date().toISOString(),
                 };
@@ -126,7 +125,7 @@ export class Datastore {
                 await this.db(TABLES.price_changes)
                     .insert(Converter.toDbPriceChange(priceChange));
             } else {
-                log(`No price change for prodId ${crawlData.prodId}; retains price ${lastKnownPrice.amount}`);
+                log(`No price change for prodId ${crawlData.prodId}; retains price ${lastKnownPrice}`);
             }
         }
     }
@@ -171,15 +170,15 @@ export class Datastore {
      */
     async getMostRecentUserSubscriptionNotifications(prodIds: number[]): Promise<UserSubscriptionNotification[]> {
         const result = await this.db.raw(`
-        SELECT user_id, prod_id, price_change_id, 
+        SELECT user_id, moniker, prod_id, price_change_id, 
             notify_price_increase_percent, notify_price_decrease_percent, created --refers to notification creation
         FROM
             (SELECT ROW_NUMBER() OVER (
-                PARTITION BY us.user_id, us.prod_id ORDER BY n.id DESC) rn, 
-                n.created, us.user_id, n.price_change_id, us.prod_id, 
+                PARTITION BY us.user_id, us.moniker, us.prod_id ORDER BY n.id DESC) rn, 
+                n.created, us.user_id, us.moniker, n.price_change_id, us.prod_id, 
                 us.notify_price_increase_percent, us.notify_price_decrease_percent, us.user_descr 
             FROM ( 
-                SELECT user_id, prod_id, 
+                SELECT user_id, moniker, prod_id, 
                     notify_price_increase_percent, notify_price_decrease_percent, user_descr
                 FROM users u, subscriptions s 
                 WHERE s.prod_id in (${prodIds}) 
@@ -202,9 +201,9 @@ export class Datastore {
         log(`Sent notification to user ${notification.userId} for price change ${notification.priceChangeId}`);
     }
 
-    private async getLastKnownPrice(prodId: number): Promise<PriceChange | undefined> {
+    async getLastKnownPrice(prodId: number): Promise<number | undefined> {
         const result = await this.db(TABLES.price_changes)
-            .select()
+            .select('amount')
             .where({ prod_id: prodId })
             .andWhere('amount', '>=', 0)
             .orderBy('id', 'desc')
@@ -214,7 +213,7 @@ export class Datastore {
         if (!result) {
             return;
         }
-        return Converter.toPriceChange(result);
+        return result.amount;
     }
 
     async existsMoniker(moniker: string): Promise<boolean> {

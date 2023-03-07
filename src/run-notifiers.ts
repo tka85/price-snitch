@@ -6,7 +6,7 @@ import { ObjectFactory } from './ObjectFactory';
 const log = getLogger('run-notifiers');
 const logError = getErrorLogger('run-notifiers');
 const datastore = ObjectFactory.getDatastore();
-const NTFY_SERVER = 'http://pihole.lan:8080/price-snitch';
+const NTFY_SERVER = 'http://pihole.lan:8080/';
 
 function shouldSendNotification(priceChange: PriceChange, userSubNotif: UserSubscriptionNotification): boolean {
     if (priceChange.prodId === userSubNotif.prodId &&
@@ -20,9 +20,10 @@ function shouldSendNotification(priceChange: PriceChange, userSubNotif: UserSubs
     return false;
 }
 
-async function postNtfyService(notification: Notification): Promise<void> {
-    log(`Sending price change notification to ntfy service ${NTFY_SERVER}`);
-    await fetch(NTFY_SERVER, {
+async function postNtfyService(moniker: string, notification: Notification): Promise<void> {
+    const endpoint = `${NTFY_SERVER}${moniker}`;
+    log(`Sending price change notification to ntfy service ${endpoint}`);
+    await fetch(endpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -47,9 +48,10 @@ async function postNtfyService(notification: Notification): Promise<void> {
                         const notif: Notification = {
                             userId: usn.userId,
                             priceChangeId: pc.id!,
+                            prodId: pc.prodId,
                             shopId: pc.shopId,
                         };
-                        await postNtfyService(notif);
+                        await postNtfyService(usn.moniker, notif);
                         await datastore.insertNotification(notif);
                     }
                 } catch (err) {

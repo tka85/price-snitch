@@ -10,7 +10,8 @@
     "crawler": {
         "poolSize": 3,
         "productsPerCrawler": 2,
-        "takeScreenshots": true
+        "takeScreenshots": true,
+        "screenshotLocation": "/tmp/screenshots/"
     },
     "NOT_USED_defaults": {
         "priceCurrency": "€",
