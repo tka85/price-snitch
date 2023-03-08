@@ -1,9 +1,9 @@
 version: "3.8"
 
 services:
-  ntfy:
+  ntfy0:
     image: binwiederhier/ntfy:latest
-    container_name: ntfy
+    container_name: ntfy0
     command:
       - serve
     environment:
@@ -26,10 +26,10 @@ services:
       environment:
         - DEBUG=price-snitch:*
       volumes:
-        - ./priceSnitch.db:/opt/price-snitch/priceSnitch.db
-        - ./priceSnitch.db-shm:/opt/price-snitch/priceSnitch.db-shm
-        - ./priceSnitch.db-wal:/opt/price-snitch/priceSnitch.db-wal
-        - ./config.json:/opt/price-snitch/config.json
+        - ./priceSnitch.db:/home/node/priceSnitch.db
+        - ./priceSnitch.db-shm:/home/node/priceSnitch.db-shm
+        - ./priceSnitch.db-wal:/home/node/priceSnitch.db-wal
+        - ./config.json:/home/node/config.json
       restart: unless-stopped
 
   notifiers:
