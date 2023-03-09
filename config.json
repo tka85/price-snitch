@@ -14,7 +14,7 @@
         "screenshotLocation": "/tmp/screenshots/"
     },
     "ntfy": {
-        "server": "http://ntfy:8080"
+        "server": "http://ntfy0:8080"
     },
     "NOT_USED_defaults": {
         "priceCurrency": "€",
