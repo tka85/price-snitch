@@ -14,16 +14,6 @@
         "screenshotLocation": "/tmp/screenshots/"
     },
     "ntfy": {
-        "server": "http://ntfy:8080"
-    },
-    "NOT_USED_defaults": {
-        "priceCurrency": "€",
-        "priceThousandSeparator": ".",
-        "priceDecimalSeparator": ",",
-        "priceLocateTimeout": 6000,
-        "priceLocateRetries": 3,
-        "priceRemoveChars": "\\s",
-        "notifyPriceIncreasePercent": 20,
-        "notifyPriceDecreasePercent": 15
+        "server": "http://ntfy0:8080"
     }
 }
