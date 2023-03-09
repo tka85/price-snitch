@@ -12,10 +12,11 @@ RUN apt autoclean && \
 
 RUN npm ci --only=production && \
     ln -s /home/node/node_modules/.bin/chromedriver /usr/local/bin && \
-    mkdir /tmp/screenshots/ && \
-    chown node:node /tmp/screenshots/
+    chown -R node:node ./node_modules
 
-RUN npm run build
+RUN npm run build && \
+    mkdir /tmp/screenshots/ && \
+    chown -R node:node ./dist /tmp/screenshots/
 
 # Check chromedriver package version is compatible with installed google-chrome version
 RUN ./check-chromedriver-version.sh

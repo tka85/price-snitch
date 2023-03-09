@@ -14,6 +14,8 @@ services:
       - ./ntfy/config:/etc/ntfy
       - ./ntfy/attachments:/var/cache/attachments
     restart: unless-stopped
+    networks:
+      - amazonsnitch
 
   crawlers:
     build: .
@@ -31,6 +33,8 @@ services:
         - ./priceSnitch.db-wal:/home/node/priceSnitch.db-wal
         - ./config.json:/home/node/config.json
       restart: unless-stopped
+    networks:
+      - amazonsnitch
 
   notifiers:
     depends_on:
@@ -38,3 +42,7 @@ services:
     <<: *shared
     container_name: notifiers
     command: [ "npm", "run", "notifiers" ]
+
+networks:
+  amazonsnitch:
+    name: amazonsnitch_network
